@@ -10,7 +10,7 @@ export function PublicSeatMap({
   selectedOptionId,
   onSelectOption,
   attendanceEnabled = false,
-  updatingSeatId,
+  pendingSeatIds,
   onAttendanceChange,
 }: {
   seats: PublicSeatDTO[];
@@ -19,7 +19,7 @@ export function PublicSeatMap({
   selectedOptionId?: string | null;
   onSelectOption?: (optionId: string) => void;
   attendanceEnabled?: boolean;
-  updatingSeatId?: string | null;
+  pendingSeatIds?: ReadonlySet<string>;
   onAttendanceChange?: (seatId: string, checkedIn: boolean) => void;
 }) {
   const topSeats = seats.filter((seat) => seat.zone === 'top').sort((a, b) => a.position - b.position);
@@ -62,7 +62,7 @@ export function PublicSeatMap({
                   clickable={clickable && Boolean(seat.pollOptionId)}
                   onClick={seat.pollOptionId && onSelectOption ? () => onSelectOption(seat.pollOptionId ?? '') : undefined}
                   attendanceEnabled={attendanceEnabled}
-                  updating={updatingSeatId === seat.id}
+                  updating={pendingSeatIds?.has(seat.id) ?? false}
                   onAttendanceChange={onAttendanceChange}
                 />
               ))}
@@ -78,7 +78,7 @@ export function PublicSeatMap({
                 clickable={clickable && Boolean(seat.pollOptionId)}
                 onClick={seat.pollOptionId && onSelectOption ? () => onSelectOption(seat.pollOptionId ?? '') : undefined}
                 attendanceEnabled={attendanceEnabled}
-                updating={updatingSeatId === seat.id}
+                updating={pendingSeatIds?.has(seat.id) ?? false}
                 onAttendanceChange={onAttendanceChange}
               />
             ))}

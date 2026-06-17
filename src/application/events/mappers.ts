@@ -116,8 +116,8 @@ function buildOptionSeatIndex(polls: PublicPollRecord[]) {
   const options = new Map<string, string>();
   const openPoll = polls.find((poll) => poll.status === 'open');
   for (const option of openPoll?.options ?? []) {
-    const seatId = readMetadataString(option.metadata, 'seatId');
-    if (seatId) options.set(seatId, option.id);
+    const seatKey = readMetadataString(option.metadata, 'seatKey');
+    if (seatKey) options.set(seatKey, option.id);
   }
   return options;
 }
@@ -147,7 +147,7 @@ function buildSeatMap(record: PublicWeeklyEventRecord, seatMap: PublicSeatMapRec
         occupantName: assignment?.displayName ?? null,
         role: assignment?.role ?? null,
         attendanceStatus: assignment?.status ?? null,
-        pollOptionId: optionSeatIndex.get(seat.id) ?? null,
+        pollOptionId: optionSeatIndex.get(seat.seatKey) ?? null,
       };
     }),
   };

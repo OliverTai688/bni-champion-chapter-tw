@@ -532,7 +532,13 @@ export async function createVoteAccessToken(slug: string, pollId: string, code: 
 }
 
 export async function submitPublicVote(slug: string, pollId: string, optionId: string, token: string) {
-  const payload = decodeVoteToken(token);
+  let activeToken = token;
+  if (token === 'public-pending') {
+    const access = await createVoteAccessToken(slug, pollId, null);
+    activeToken = access.token;
+  }
+
+  const payload = decodeVoteToken(activeToken);
   if (payload.pollId !== pollId) throw new Error('Vote token does not match poll.');
 
   const option = await prisma.livePollOption.findFirst({
@@ -562,7 +568,7 @@ export async function submitPublicVote(slug: string, pollId: string, optionId: s
     data: {
       pollId,
       optionId,
-      tokenHash: tokenHash(token),
+      tokenHash: tokenHash(activeToken),
       anonymousVoterHash: hashValue(payload.nonce),
       metadata: {
         source: 'public-weekly-page',

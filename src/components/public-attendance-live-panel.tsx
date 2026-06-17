@@ -1,14 +1,38 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Loader2, UsersRound } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CheckCircle2, UsersRound } from 'lucide-react';
 import type { PublicWeeklyEventDTO } from '@/application/events/dto';
 import { PublicSeatMap } from '@/components/public-seat-map';
 
+// Recompute the summary/zone counters locally so optimistic toggles update the
+// whole panel instantly; the 5s poll later reconciles with the server truth.
+function applyAttendance(event: PublicWeeklyEventDTO, seatId: string, checkedIn: boolean): PublicWeeklyEventDTO {
+  const seats = event.seatMap.seats.map((seat) =>
+    seat.id === seatId ? { ...seat, attendanceStatus: checkedIn ? 'checked_in' : 'assigned' } : seat,
+  );
+  const checkedInCount = seats.filter((seat) => seat.attendanceStatus === 'checked_in').length;
+
+  return {
+    ...event,
+    seatSummary: { ...event.seatSummary, checkedInCount },
+    occupancyByZone: event.occupancyByZone.map((zone) => ({
+      ...zone,
+      checkedInCount: seats.filter((seat) => seat.zone === zone.zone && seat.attendanceStatus === 'checked_in').length,
+    })),
+    seatMap: { ...event.seatMap, seats },
+  };
+}
+
 export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: PublicWeeklyEventDTO }) {
   const [event, setEvent] = useState(initialEvent);
-  const [updatingSeatId, setUpdatingSeatId] = useState<string | null>(null);
+  const [pendingSeatIds, setPendingSeatIds] = useState<Set<string>>(() => new Set());
   const [message, setMessage] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
+  const pendingRef = useRef(pendingSeatIds);
+
+  useEffect(() => {
+    pendingRef.current = pendingSeatIds;
+  }, [pendingSeatIds]);
 
   const openPoll = useMemo(() => event.polls.find((poll) => poll.status === 'open') ?? null, [event.polls]);
   const checkedInRate = event.seatSummary.occupiedSeats > 0
@@ -17,12 +41,16 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
 
   useEffect(() => {
     const timer = window.setInterval(() => {
+      // Skip while a toggle is in flight so the poll never reverts an optimistic change.
+      if (pendingRef.current.size > 0) return;
       void fetch(`/api/public/events/${event.slug}`, { cache: 'no-store' })
         .then((response) => {
           if (!response.ok) throw new Error('讀取公開頁狀態失敗。');
           return response.json() as Promise<PublicWeeklyEventDTO>;
         })
-        .then(setEvent)
+        .then((next) => {
+          if (pendingRef.current.size === 0) setEvent(next);
+        })
         .catch(() => {});
     }, 5000);
 
@@ -31,12 +59,16 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
 
   useEffect(() => {
     if (!message || message.tone !== 'ok') return;
-    const timer = window.setTimeout(() => setMessage(null), 3500);
+    const timer = window.setTimeout(() => setMessage(null), 3000);
     return () => window.clearTimeout(timer);
   }, [message]);
 
   async function updateAttendance(seatId: string, checkedIn: boolean) {
-    setUpdatingSeatId(seatId);
+    const previousStatus = event.seatMap.seats.find((seat) => seat.id === seatId)?.attendanceStatus ?? 'assigned';
+
+    // Optimistic: flip the seat and counters immediately.
+    setEvent((current) => applyAttendance(current, seatId, checkedIn));
+    setPendingSeatIds((current) => new Set(current).add(seatId));
     setMessage(null);
 
     try {
@@ -48,12 +80,17 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message ?? '更新抵達狀態失敗。');
 
-      setEvent(data);
-      setMessage({ text: checkedIn ? '已標記抵達，公開頁將同步更新。' : '已取消抵達標記。', tone: 'ok' });
+      setMessage({ text: checkedIn ? '已標記抵達。' : '已取消抵達。', tone: 'ok' });
     } catch (error) {
+      // Roll back just this seat.
+      setEvent((current) => applyAttendance(current, seatId, previousStatus === 'checked_in'));
       setMessage({ text: error instanceof Error ? error.message : '更新抵達狀態失敗。', tone: 'error' });
     } finally {
-      setUpdatingSeatId(null);
+      setPendingSeatIds((current) => {
+        const next = new Set(current);
+        next.delete(seatId);
+        return next;
+      });
     }
   }
 
@@ -124,7 +161,7 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
           columns={event.seatMap.columns}
           activePoll={openPoll}
           attendanceEnabled
-          updatingSeatId={updatingSeatId}
+          pendingSeatIds={pendingSeatIds}
           onAttendanceChange={updateAttendance}
         />
       </div>
@@ -137,7 +174,6 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
               : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
           }`}
         >
-          {updatingSeatId ? <Loader2 className="mr-1.5 inline h-4 w-4 animate-spin" /> : null}
           {message.text}
         </div>
       ) : null}
@@ -157,7 +193,7 @@ function LiveDot() {
 function Stat({ label, value, accent = false }: { label: string; value: number; accent?: boolean }) {
   return (
     <div className={`rounded-xl p-3 ${accent ? 'bg-emerald-500/10' : 'bg-background/70'}`}>
-      <div className={`text-2xl font-black ${accent ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>{value}</div>
+      <div className={`text-2xl font-black tabular-nums ${accent ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>{value}</div>
       <div className="mt-1 text-xs font-bold text-foreground/45">{label}</div>
     </div>
   );

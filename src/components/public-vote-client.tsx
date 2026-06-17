@@ -52,30 +52,13 @@ export function PublicVoteClient({ event }: { event: PublicWeeklyEventDTO }) {
   async function submitVote() {
     if (!poll || !selectedOptionId) return;
 
-    let voteToken = token;
     setState('submitting');
     setMessage(null);
-
-    if (poll.eligibility === 'public' && token === 'public-pending') {
-      const accessResponse = await fetch(`/api/public/events/${event.slug}/polls/${poll.id}/access`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: null }),
-      });
-      const accessData = await accessResponse.json();
-      if (!accessResponse.ok) {
-        setState('error');
-        setMessage(accessData?.message ?? '無法取得投票權限。');
-        return;
-      }
-      voteToken = accessData.token;
-      setToken(voteToken);
-    }
 
     const response = await fetch(`/api/public/events/${event.slug}/polls/${poll.id}/votes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ optionId: selectedOptionId, token: voteToken }),
+      body: JSON.stringify({ optionId: selectedOptionId, token }),
     });
     const data = await response.json();
     if (!response.ok) {
