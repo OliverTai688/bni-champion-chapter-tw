@@ -5,6 +5,8 @@ import { toPublicWeeklyEventDTO } from '@/application/events/mappers';
 import { findPublicWeeklyEventBySlug } from '@/server/repositories/weekly-public-event-repository';
 import { PublicAttendanceLivePanel } from '@/components/public-attendance-live-panel';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: '每週活動頁 | Take Seat',
   description: '公開檢視每週活動狀態與匿名投票入口',

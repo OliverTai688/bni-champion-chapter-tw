@@ -32,18 +32,20 @@ function toSeatDataFromSeat(seat: ReturnType<typeof toAdminSeatingWorkspaceDTO>[
 }
 
 export async function loadSeatingEditorState(weekId: string) {
-  if (weekId === CURRENT_MEETING_WEEK.id) {
-    return {
-      week: CURRENT_MEETING_WEEK,
-      layout: CURRENT_SEATING_LAYOUT,
-      heroes: CURRENT_SEATING_HEROES,
-      memberRoster: CURRENT_SEATING_MEMBER_ROSTER,
-      loadedFrom: 'seed' as const,
-    };
-  }
-
   const seatMap = await findLatestSeatMapByWeekId(weekId);
-  if (!seatMap) return null;
+
+  if (!seatMap) {
+    if (weekId === CURRENT_MEETING_WEEK.id) {
+      return {
+        week: CURRENT_MEETING_WEEK,
+        layout: CURRENT_SEATING_LAYOUT,
+        heroes: CURRENT_SEATING_HEROES,
+        memberRoster: CURRENT_SEATING_MEMBER_ROSTER,
+        loadedFrom: 'seed' as const,
+      };
+    }
+    return null;
+  }
 
   const dto = toAdminSeatingWorkspaceDTO(seatMap);
   const topRoles = Array.isArray(dto.seatMap.topRoles)

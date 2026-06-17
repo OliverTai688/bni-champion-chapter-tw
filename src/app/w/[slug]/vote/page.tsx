@@ -5,6 +5,8 @@ import { toPublicWeeklyEventDTO } from '@/application/events/mappers';
 import { findPublicWeeklyEventBySlug } from '@/server/repositories/weekly-public-event-repository';
 import { PublicVoteClient } from '@/components/public-vote-client';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: '投票 | Take Seat',
   description: '依照公開座位圖進行現場投票',

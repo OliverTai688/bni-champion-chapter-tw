@@ -307,8 +307,9 @@ function applyRoster(
     newItems
       .filter((s): s is SeatData => {
         if (!s) return false;
-        if (s.isGuest || s.isHost || s.isSound || s.isDuty) return false;
+        if (s.isGuest) return false;
         if (s.role === '代理') return false;
+        // Hosts, sound, and duty ARE seated members, so we must include them!
         return true;
       })
       .map((s) => s.name.trim())
