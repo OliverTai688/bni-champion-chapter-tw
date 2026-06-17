@@ -16,6 +16,7 @@ User asked to fix the remaining production database connection problem after `/s
 - Added `GET /api/health/db`.
 - The health route checks whether `DATABASE_URL` is configured and parseable without exposing secrets.
 - The health route performs a MongoDB `ping` through Prisma with a 6 second timeout.
+- Added Prisma client startup normalization for the known malformed MongoDB URL shape where `retryWrites` was nested inside `appName`.
 - Updated `.env.example` to show the correct MongoDB query string shape:
 
 ```txt
@@ -62,4 +63,4 @@ mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/take-seat?retryWrites=true&w=maj
 
 - `pnpm exec prisma validate`: pass.
 - `pnpm exec prisma db push --skip-generate`: pass locally, database already in sync.
-
+- Production `/api/health/db` before normalization deployment returned `status: "timeout"` and `hasRetryWrites: false`, confirming the Vercel `DATABASE_URL` query string is malformed.
