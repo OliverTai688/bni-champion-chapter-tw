@@ -11,6 +11,7 @@ type PublicSeatRecord = {
   label: string | null;
   capacity: number;
   assignments: Array<{
+    memberId: string | null;
     displayName: string;
     role: string | null;
     status: string;
@@ -37,6 +38,7 @@ type PublicPollRecord = {
   closesAt: Date | null;
   options: Array<{
     id: string;
+    memberId: string | null;
     label: string;
     publicDescription: string | null;
     metadata: unknown;
@@ -112,20 +114,30 @@ function readMetadataString(metadata: unknown, key: string) {
   return typeof value === 'string' ? value : null;
 }
 
+// A poll option is created against a person (memberId) and frozen with the
+// seat they sat in at creation time. Map back to seats by the person first so
+// the option always follows the member if they move seats; only fall back to
+// the positional seatKey for legacy options that have no memberId.
 function buildOptionSeatIndex(polls: PublicPollRecord[]) {
-  const options = new Map<string, string>();
+  const byMember = new Map<string, string>();
+  const bySeatKey = new Map<string, string>();
   const openPoll = polls.find((poll) => poll.status === 'open');
   for (const option of openPoll?.options ?? []) {
+    if (option.memberId) {
+      byMember.set(option.memberId, option.id);
+      continue;
+    }
+    // Only options with no member identity fall back to positional matching.
     const seatKey = readMetadataString(option.metadata, 'seatKey');
-    if (seatKey) options.set(seatKey, option.id);
+    if (seatKey) bySeatKey.set(seatKey, option.id);
   }
-  return options;
+  return { byMember, bySeatKey };
 }
 
 function buildSeatMap(record: PublicWeeklyEventRecord, seatMap: PublicSeatMapRecord | undefined): PublicWeeklyEventDTO['seatMap'] {
   if (!seatMap) return { columns: 4, seats: [] };
 
-  const optionSeatIndex = buildOptionSeatIndex(record.livePolls);
+  const { byMember, bySeatKey } = buildOptionSeatIndex(record.livePolls);
   const mainCols = seatMap.seats
     .filter((seat) => seat.zone === 'main' && seat.col !== null)
     .map((seat) => seat.col ?? 0);
@@ -147,7 +159,10 @@ function buildSeatMap(record: PublicWeeklyEventRecord, seatMap: PublicSeatMapRec
         occupantName: assignment?.displayName ?? null,
         role: assignment?.role ?? null,
         attendanceStatus: assignment?.status ?? null,
-        pollOptionId: optionSeatIndex.get(seat.seatKey) ?? null,
+        pollOptionId:
+          (assignment?.memberId ? byMember.get(assignment.memberId) : null) ??
+          bySeatKey.get(seat.seatKey) ??
+          null,
       };
     }),
   };

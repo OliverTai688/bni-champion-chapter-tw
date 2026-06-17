@@ -28,6 +28,7 @@ export async function findPublicWeeklyEventBySlug(slug: string) {
                   },
                 },
                 select: {
+                  memberId: true,
                   displayName: true,
                   role: true,
                   status: true,
@@ -57,6 +58,7 @@ export async function findPublicWeeklyEventBySlug(slug: string) {
             orderBy: { position: 'asc' },
             select: {
               id: true,
+              memberId: true,
               label: true,
               publicDescription: true,
               metadata: true,
