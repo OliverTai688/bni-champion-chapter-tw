@@ -129,7 +129,7 @@ function buildSeatMap(record: PublicWeeklyEventRecord, seatMap: PublicSeatMapRec
   const mainCols = seatMap.seats
     .filter((seat) => seat.zone === 'main' && seat.col !== null)
     .map((seat) => seat.col ?? 0);
-  const columns = Math.max(5, ...mainCols.map((col) => col + 1));
+  const columns = Math.max(4, ...mainCols.map((col) => col + 1));
 
   return {
     columns,

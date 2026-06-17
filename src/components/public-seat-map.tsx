@@ -52,7 +52,7 @@ export function PublicSeatMap({
           {topSeats.length > 0 ? (
             <div
               className="mb-3 grid gap-2"
-              style={{ gridTemplateColumns: `repeat(${Math.min(topSeats.length, columns)}, minmax(76px, 1fr))` }}
+              style={{ gridTemplateColumns: `repeat(${topSeats.length}, minmax(76px, 1fr))` }}
             >
               {topSeats.map((seat) => (
                 <SeatTile
