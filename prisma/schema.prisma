@@ -1,0 +1,215 @@
+// Prisma MongoDB foundation for take-seat.
+// MongoDB support is pinned to Prisma ORM 6.19.x until official Prisma v7
+// MongoDB support is available.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum MeetingSessionStatus {
+  draft
+  scheduled
+  live
+  completed
+  archived
+  canceled
+}
+
+enum SeatMapStatus {
+  draft
+  published
+  archived
+}
+
+enum SeatKind {
+  host_team
+  sound
+  duty
+  guest
+  host
+  member
+  proxy
+  empty
+  reserved
+}
+
+enum SeatAssignmentStatus {
+  assigned
+  checked_in
+  absent
+  canceled
+  released
+  reserved
+}
+
+enum OperationActorRole {
+  system
+  admin
+  staff
+  member
+  import
+}
+
+model MeetingSession {
+  id           String               @id @default(auto()) @map("_id") @db.ObjectId
+  weekId       String               @unique
+  date         DateTime
+  title        String
+  chapterName  String
+  meetingLabel String
+  source       String               @default("seed")
+  status       MeetingSessionStatus @default(draft)
+  metadata     Json?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  seatMaps      SeatMap[]
+  operationLogs OperationLog[]
+
+  @@index([date])
+  @@index([status])
+}
+
+model Member {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  displayName String   @unique
+  adminGroup  String?
+  roles       String[]
+  note        String?
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments SeatAssignment[]
+
+  @@index([isActive])
+}
+
+model SeatMap {
+  id             String        @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId      String        @db.ObjectId
+  session        MeetingSession @relation(fields: [sessionId], references: [id])
+  title          String
+  version        Int           @default(1)
+  status         SeatMapStatus @default(draft)
+  layoutKind     String        @default("bni-weekly-grid")
+  topRoles       Json
+  memberRoster   String[]
+  heroes         String[]
+  industryChains Json?
+  source         String        @default("seed")
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  seats       Seat[]
+  assignments SeatAssignment[]
+  revisions   SeatMapRevision[]
+
+  @@index([sessionId])
+  @@index([status])
+}
+
+model Seat {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  seatMapId String   @db.ObjectId
+  seatMap   SeatMap  @relation(fields: [seatMapId], references: [id])
+  seatKey   String
+  row       Int?
+  col       Int?
+  zone      String   @default("main")
+  position  Int
+  kind      SeatKind @default(empty)
+  label     String?
+  capacity  Int      @default(1)
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments SeatAssignment[]
+
+  @@unique([seatMapId, seatKey])
+  @@index([seatMapId, row, col])
+  @@index([kind])
+}
+
+model SeatAssignment {
+  id          String               @id @default(auto()) @map("_id") @db.ObjectId
+  seatMapId   String               @db.ObjectId
+  seatMap     SeatMap              @relation(fields: [seatMapId], references: [id])
+  seatId      String               @db.ObjectId
+  seat        Seat                 @relation(fields: [seatId], references: [id])
+  memberId    String?              @db.ObjectId
+  member      Member?              @relation(fields: [memberId], references: [id])
+  displayName String
+  role        String?
+  guestNumber String?
+  hostFor     String?
+  status      SeatAssignmentStatus @default(assigned)
+  source      String               @default("seed")
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([seatMapId])
+  @@index([seatId])
+  @@index([memberId])
+  @@index([status])
+}
+
+model SeatMapRevision {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  seatMapId         String   @db.ObjectId
+  seatMap           SeatMap  @relation(fields: [seatMapId], references: [id])
+  version           Int
+  snapshot          Json
+  validationSummary Json?
+  createdBy         String?
+  reason            String?
+  createdAt         DateTime @default(now())
+
+  @@unique([seatMapId, version])
+  @@index([seatMapId])
+}
+
+model OperationLog {
+  id          String             @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId   String?            @db.ObjectId
+  session     MeetingSession?    @relation(fields: [sessionId], references: [id])
+  actorRole   OperationActorRole @default(system)
+  actorName   String?
+  action      String
+  targetType  String
+  targetId    String?
+  reason      String?
+  metadata    Json?
+  createdAt   DateTime           @default(now())
+
+  @@index([sessionId])
+  @@index([action])
+  @@index([targetType])
+  @@index([createdAt])
+}
+
+model Asset {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  provider    String   @default("r2")
+  bucket      String
+  key         String
+  contentType String
+  byteSize    Int?
+  checksum    String?
+  visibility  String   @default("private")
+  purpose     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([bucket, key])
+  @@index([purpose])
+  @@index([visibility])
+}

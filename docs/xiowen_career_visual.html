@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文博職涯轉換策略地圖</title>
+<style>
+:root {
+  --primary: #4A6FA5;
+  --primary-light: #6B8DB8;
+  --secondary: #E07B39;
+  --accent: #2D6A4F;
+  --accent-light: #52B788;
+  --danger: #c0392b;
+  --warning: #e67e22;
+  --success: #27ae60;
+  --bg: #0d1117;
+  --bg-card: #161b27;
+  --bg-card2: #1c2233;
+  --border: #2a3050;
+  --text: #cdd6f4;
+  --text-muted: #7a8aad;
+  --text-bright: #ffffff;
+  --teal: #64ffda;
+  --gold: #ffd700;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Segoe UI','PingFang TC','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.7;min-height:100vh}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+@media(max-width:900px){.app{grid-template-columns:1fr}}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--bg-card);border-right:1px solid var(--border);padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-logo{padding:0 20px 20px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.sidebar-logo h1{font-size:15px;color:var(--teal);font-weight:700;letter-spacing:.5px}
+.sidebar-logo p{font-size:11px;color:var(--text-muted);margin-top:4px}
+.nav-section{padding:4px 0}
+.nav-section-title{font-size:10px;color:var(--text-muted);letter-spacing:1.5px;text-transform:uppercase;padding:8px 20px 4px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 20px;cursor:pointer;font-size:13px;color:var(--text-muted);transition:all .2s;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover,.nav-item.active{color:var(--text);background:var(--bg-card2);border-left-color:var(--primary)}
+.nav-item .nav-icon{font-size:14px;width:18px;text-align:center}
+.sidebar-progress{padding:16px 20px;margin-top:auto;border-top:1px solid var(--border)}
+.sidebar-progress label{font-size:11px;color:var(--text-muted);display:flex;justify-content:space-between;margin-bottom:6px}
+.progress-bar{background:var(--border);border-radius:99px;height:6px;overflow:hidden}
+.progress-fill{background:linear-gradient(90deg,var(--primary),var(--teal));height:100%;border-radius:99px;transition:width .4s ease}
+
+/* ── MAIN ── */
+main{padding:40px 48px;max-width:900px}
+@media(max-width:900px){main{padding:24px 20px};.sidebar{display:none}}
+
+/* ── SECTIONS ── */
+.section{margin-bottom:60px;scroll-margin-top:24px}
+.section-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.section-number{background:var(--primary);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.section-title{font-size:20px;font-weight:700;color:var(--text-bright)}
+.section-subtitle{font-size:13px;color:var(--text-muted);margin-top:2px}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(135deg,#0d1117 0%,#1a1f35 50%,#0d1117 100%);border:1px solid var(--border);border-radius:16px;padding:40px;margin-bottom:48px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-60px;right:-60px;width:250px;height:250px;background:radial-gradient(circle,rgba(74,111,165,.15) 0%,transparent 70%);pointer-events:none}
+.hero-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(100,255,218,.1);border:1px solid rgba(100,255,218,.3);color:var(--teal);padding:4px 12px;border-radius:99px;font-size:12px;margin-bottom:16px}
+.hero h2{font-size:26px;font-weight:800;color:var(--text-bright);line-height:1.4;margin-bottom:12px}
+.hero-quote{font-size:14px;color:var(--text-muted);border-left:3px solid var(--primary);padding-left:14px;font-style:italic;line-height:1.8}
+.hero-pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.pill{background:var(--bg-card2);border:1px solid var(--border);padding:5px 14px;border-radius:99px;font-size:12px;color:var(--text-muted)}
+.pill.active{background:rgba(74,111,165,.2);border-color:var(--primary);color:var(--primary-light)}
+
+/* ── CARDS ── */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:16px;transition:border-color .2s}
+.card:hover{border-color:var(--primary)}
+.card-title{font-size:14px;font-weight:700;color:var(--text-bright);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.card-body{font-size:13px;color:var(--text-muted);line-height:1.8}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.card-highlight{border-color:var(--accent-light);background:rgba(45,106,79,.08)}
+.card-highlight .card-title{color:var(--accent-light)}
+
+/* ── BADGE ── */
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-blue{background:rgba(74,111,165,.2);color:#7fb3ff}
+.badge-green{background:rgba(39,174,96,.2);color:#6fcf97}
+.badge-orange{background:rgba(224,123,57,.2);color:#ffb347}
+.badge-red{background:rgba(192,57,43,.2);color:#ff8a80}
+.badge-teal{background:rgba(100,255,218,.15);color:var(--teal)}
+
+/* ── EVIDENCE TYPES ── */
+.evidence-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+@media(max-width:700px){.evidence-grid{grid-template-columns:1fr}}
+.evidence-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;transition:all .2s}
+.evidence-card:hover{transform:translateY(-3px);border-color:var(--primary)}
+.evidence-icon{font-size:28px;margin-bottom:10px}
+.evidence-label{font-size:12px;font-weight:700;color:var(--text-bright);margin-bottom:6px}
+.evidence-desc{font-size:12px;color:var(--text-muted)}
+
+/* ── T SHAPE ── */
+.t-shape-container{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:28px;margin-bottom:16px}
+.t-horizontal{background:linear-gradient(135deg,var(--primary),var(--primary-light));border-radius:8px;padding:16px;margin-bottom:0;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.t-h-item{background:rgba(0,0,0,.2);border-radius:6px;padding:10px 12px;text-align:center;font-size:12px;color:#fff}
+.t-h-item strong{display:block;font-size:11px;margin-bottom:3px;opacity:.7;letter-spacing:.5px}
+.t-vertical-wrapper{display:flex;justify-content:center}
+.t-vertical{background:linear-gradient(180deg,var(--accent),var(--accent-light));border-radius:0 0 8px 8px;width:46%;padding:16px 12px;display:grid;grid-template-rows:repeat(auto,1fr);gap:10px}
+.t-v-item{background:rgba(0,0,0,.2);border-radius:6px;padding:8px 12px;font-size:12px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+.t-v-arrow{font-size:12px;opacity:.6}
+.t-label{font-size:11px;text-align:center;color:var(--text-muted);margin-top:8px}
+
+/* ── PHASES ── */
+.phases{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+@media(max-width:700px){.phases{grid-template-columns:1fr}}
+.phase-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .2s}
+.phase-card:hover,.phase-card.open{border-color:var(--primary)}
+.phase-head{padding:16px 20px}
+.phase-num{font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600;letter-spacing:.5px}
+.phase-title{font-size:15px;font-weight:700;color:var(--text-bright)}
+.phase-time{display:inline-block;margin-top:8px;font-size:11px;color:var(--secondary);background:rgba(224,123,57,.1);padding:2px 10px;border-radius:99px}
+.phase-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.phase-card.open .phase-body{max-height:600px}
+.phase-content{padding:0 20px 20px;border-top:1px solid var(--border);margin-top:0;padding-top:16px}
+.phase-content ul{list-style:none;display:flex;flex-direction:column;gap:8px}
+.phase-content li{font-size:13px;color:var(--text-muted);padding-left:18px;position:relative}
+.phase-content li::before{content:'→';position:absolute;left:0;color:var(--primary)}
+.phase-decision{background:rgba(74,111,165,.08);border-radius:8px;padding:12px;margin-top:12px;font-size:12px;color:var(--text-muted);border-left:3px solid var(--primary)}
+
+/* ── PRIORITY TABLE ── */
+.priority-table{width:100%;border-collapse:collapse;font-size:13px}
+.priority-table th{background:var(--bg-card2);color:var(--text-muted);font-size:11px;letter-spacing:.5px;padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)}
+.priority-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+.priority-table tr:hover td{background:var(--bg-card2)}
+.priority-num{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff}
+.p1{background:var(--secondary)}
+.p2{background:var(--primary)}
+.p3{background:var(--accent)}
+.p4{background:var(--text-muted)}
+
+/* ── PROJECT CARDS ── */
+.project-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:14px;display:flex;gap:16px;align-items:flex-start}
+.project-priority{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;margin-top:2px}
+.project-body{flex:1}
+.project-title{font-size:14px;font-weight:700;color:var(--text-bright);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.project-desc{font-size:13px;color:var(--text-muted);margin-bottom:10px}
+.project-fields{display:flex;flex-wrap:wrap;gap:6px}
+.field-tag{background:var(--bg-card2);border:1px solid var(--border);padding:3px 10px;border-radius:99px;font-size:11px;color:var(--text-muted)}
+.project-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:12px;color:var(--text-muted);cursor:pointer}
+.project-check input[type=checkbox]{width:14px;height:14px;accent-color:var(--primary);cursor:pointer}
+
+/* ── DECISION MATRIX ── */
+.matrix-table{width:100%;border-collapse:collapse;font-size:13px}
+.matrix-table th{background:var(--bg-card2);color:var(--text-muted);font-size:11px;letter-spacing:.5px;padding:10px 14px;text-align:left;border-bottom:1px solid var(--border)}
+.matrix-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.6}
+.matrix-table tr:hover td{background:rgba(255,255,255,.02)}
+.matrix-table td:first-child{font-weight:600;color:var(--text-bright);white-space:nowrap}
+.stay-text{color:var(--warning)}
+.move-text{color:var(--success)}
+
+/* ── STRATEGY COMPARE ── */
+.strategy-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:700px){.strategy-grid{grid-template-columns:1fr}}
+.strategy-card{background:var(--bg-card);border:2px solid var(--border);border-radius:12px;overflow:hidden;transition:all .2s}
+.strategy-card.recommended{border-color:var(--accent-light);box-shadow:0 0 30px rgba(82,183,136,.1)}
+.strategy-head{padding:16px 20px}
+.strategy-label{font-size:11px;letter-spacing:.5px;font-weight:600;margin-bottom:6px}
+.strategy-name{font-size:15px;font-weight:700;color:var(--text-bright)}
+.strategy-rec{display:inline-block;margin-top:8px;background:rgba(82,183,136,.15);color:var(--accent-light);padding:2px 10px;border-radius:99px;font-size:11px;font-weight:600}
+.strategy-rows{padding:4px 0 16px}
+.strategy-row{display:flex;justify-content:space-between;padding:8px 20px;border-bottom:1px solid var(--border);font-size:13px}
+.strategy-row:last-child{border-bottom:none}
+.strategy-row span:first-child{color:var(--text-muted)}
+.risk-low{color:var(--success)}
+.risk-med{color:var(--warning)}
+.risk-high{color:var(--danger)}
+
+/* ── 4 WEEK PLAN ── */
+.week-container{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+@media(max-width:700px){.week-container{grid-template-columns:1fr}}
+.week-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.week-head{padding:14px 20px;background:var(--bg-card2);display:flex;align-items:center;justify-content:space-between}
+.week-num{font-size:11px;color:var(--text-muted);font-weight:600}
+.week-title{font-size:14px;font-weight:700;color:var(--text-bright);margin-top:2px}
+.week-progress-mini{font-size:11px;color:var(--primary-light)}
+.week-tasks{padding:16px 20px;display:flex;flex-direction:column;gap:10px}
+.task-item{display:flex;align-items:flex-start;gap:10px;cursor:pointer}
+.task-item input[type=checkbox]{width:15px;height:15px;margin-top:2px;accent-color:var(--primary);cursor:pointer;flex-shrink:0}
+.task-item label{font-size:13px;color:var(--text-muted);cursor:pointer;line-height:1.5;transition:color .2s}
+.task-item.done label{color:var(--text-muted);text-decoration:line-through;opacity:.5}
+
+/* ── THEORY CARDS ── */
+.theory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.theory-card{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px 22px}
+.theory-icon{font-size:22px;margin-bottom:10px}
+.theory-name{font-size:13px;font-weight:700;color:var(--text-bright);margin-bottom:6px}
+.theory-en{font-size:11px;color:var(--text-muted);margin-bottom:10px;font-style:italic}
+.theory-body{font-size:12px;color:var(--text-muted);line-height:1.7}
+.theory-apply{margin-top:10px;padding:8px 12px;background:rgba(74,111,165,.08);border-radius:6px;font-size:12px;color:var(--primary-light);border-left:2px solid var(--primary)}
+
+/* ── ANCHOR GRID ── */
+.anchor-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.anchor-grid{grid-template-columns:repeat(2,1fr)}}
+.anchor-item{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;font-size:12px;cursor:pointer;transition:all .2s}
+.anchor-item:hover,.anchor-item.selected{border-color:var(--primary);background:rgba(74,111,165,.1)}
+.anchor-item.selected .anchor-icon{transform:scale(1.2)}
+.anchor-icon{font-size:20px;display:block;margin-bottom:6px;transition:transform .2s}
+.anchor-label{color:var(--text-muted);line-height:1.4}
+.anchor-label strong{display:block;color:var(--text-bright);margin-bottom:2px;font-size:12px}
+
+/* ── ROADMAP ── */
+.roadmap{position:relative;padding-left:32px}
+.roadmap::before{content:'';position:absolute;left:10px;top:8px;bottom:8px;width:2px;background:linear-gradient(180deg,var(--primary),var(--teal));border-radius:2px}
+.roadmap-step{position:relative;margin-bottom:20px}
+.roadmap-dot{position:absolute;left:-28px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--primary);border:2px solid var(--bg);box-shadow:0 0 0 2px var(--primary)}
+.roadmap-step.accent .roadmap-dot{background:var(--teal);box-shadow:0 0 0 2px var(--teal)}
+.roadmap-body{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.roadmap-title{font-size:13px;font-weight:700;color:var(--text-bright);margin-bottom:4px}
+.roadmap-desc{font-size:12px;color:var(--text-muted)}
+
+/* ── NOTES ── */
+.notes-area{width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;color:var(--text);font-size:13px;font-family:inherit;resize:vertical;min-height:80px;outline:none;transition:border-color .2s;line-height:1.6}
+.notes-area:focus{border-color:var(--primary)}
+.notes-label{font-size:11px;color:var(--text-muted);margin-bottom:6px;letter-spacing:.5px}
+
+/* ── SUMMARY BOX ── */
+.summary-box{background:linear-gradient(135deg,rgba(74,111,165,.12),rgba(45,106,79,.12));border:1px solid rgba(100,255,218,.2);border-radius:16px;padding:32px 36px;text-align:center}
+.summary-box h3{font-size:18px;font-weight:700;color:var(--text-bright);margin-bottom:16px}
+.summary-box blockquote{font-size:14px;color:var(--text);font-style:italic;line-height:1.9;max-width:640px;margin:0 auto}
+.summary-box blockquote + blockquote{margin-top:16px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* ── MISC ── */
+.divider{border:none;border-top:1px solid var(--border);margin:32px 0}
+.tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.info-box{background:rgba(74,111,165,.08);border:1px solid rgba(74,111,165,.2);border-radius:10px;padding:14px 18px;font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:16px}
+.info-box strong{color:var(--text-bright)}
+table.simple{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px}
+table.simple th{background:var(--bg-card2);color:var(--text-muted);font-size:11px;padding:9px 14px;text-align:left;border-bottom:1px solid var(--border);font-weight:600;letter-spacing:.4px}
+table.simple td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text-muted);vertical-align:top;line-height:1.6}
+table.simple tr:hover td{background:rgba(255,255,255,.02)}
+table.simple td:first-child{color:var(--text-bright);font-weight:500}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🗺 文博職涯策略地圖</h1>
+    <p>Xiowen Career Strategy Resource</p>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">策略核心</div>
+    <a class="nav-item" href="#hero"><span class="nav-icon">🎯</span>核心定位</a>
+    <a class="nav-item" href="#evidence"><span class="nav-icon">🧱</span>三種轉換證據</a>
+    <a class="nav-item" href="#tshape"><span class="nav-icon">🔤</span>T 型學習策略</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">轉換路線</div>
+    <a class="nav-item" href="#phases"><span class="nav-icon">🚦</span>三階段轉換</a>
+    <a class="nav-item" href="#roadmap"><span class="nav-icon">🛤</span>實際路線圖</a>
+    <a class="nav-item" href="#projects"><span class="nav-icon">📁</span>外部作品項目</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">決策工具</div>
+    <a class="nav-item" href="#matrix"><span class="nav-icon">⚖️</span>轉換決策矩陣</a>
+    <a class="nav-item" href="#strategy"><span class="nav-icon">🔀</span>三種策略比較</a>
+    <a class="nav-item" href="#fourweeks"><span class="nav-icon">📅</span>4 週行動計畫</a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">理論支援</div>
+    <a class="nav-item" href="#theories"><span class="nav-icon">📚</span>職涯理論基礎</a>
+    <a class="nav-item" href="#anchors"><span class="nav-icon">⚓</span>職涯錨點診斷</a>
+    <a class="nav-item" href="#synthesis"><span class="nav-icon">💡</span>核心總結</a>
+  </div>
+  <div class="sidebar-progress">
+    <label>整體進度 <span id="progress-pct">0%</span></label>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+<!-- HERO -->
+<div id="hero" class="hero">
+  <div class="hero-tag">⚠️ 核心決策框架</div>
+  <h2>如何把會計／財務能力，逐步轉譯成文化機構看得懂的能力</h2>
+  <p class="hero-quote">
+    核心不是「要不要轉職」，而是：<br>
+    把目前的財務能力，轉譯成文化機構、博物館、文物管理或知識整理場域看得懂的語言與作品。
+  </p>
+  <div class="hero-pills">
+    <span class="pill active">保留友善工作環境</span>
+    <span class="pill active">建立轉換證據</span>
+    <span class="pill active">低風險橋接</span>
+    <span class="pill">避免興趣承壓</span>
+    <span class="pill">財務能力不廢棄</span>
+  </div>
+</div>
+
+<!-- SECTION 1 — EVIDENCE -->
+<div id="evidence" class="section">
+  <div class="section-header">
+    <div class="section-number">1</div>
+    <div>
+      <div class="section-title">三種轉換證據</div>
+      <div class="section-subtitle">學習不能只停留在「我有興趣」，必須轉成可展示的三種東西</div>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>風險警告：</strong>如果只做學習，可能讀很多歷史、博物館內容，但履歷上仍然看不出可轉職的證據。每一次學習都應留下可展示、可累積、可轉職使用的輸出。
+  </div>
+
+  <div class="evidence-grid">
+    <div class="evidence-card">
+      <div class="evidence-icon">📖</div>
+      <div class="evidence-label">知識證據</div>
+      <div class="evidence-desc">我真的理解這個領域，不只是喜歡。<br>能說明博物館的內部結構、典藏邏輯、文化資產制度。</div>
+    </div>
+    <div class="evidence-card">
+      <div class="evidence-icon">🛠</div>
+      <div class="evidence-label">能力證據</div>
+      <div class="evidence-desc">我能整理、分析、建檔、規劃或管理。<br>公開筆記、模板、SOP 都是能力的展示。</div>
+    </div>
+    <div class="evidence-card">
+      <div class="evidence-icon">🏛</div>
+      <div class="evidence-label">場域證據</div>
+      <div class="evidence-desc">我接觸過博物館、文化機構、文史工作者。<br>參觀分析、志工、講座、人脈都算。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📐 從興趣到職涯資源的轉換流程</div>
+    <div class="card-body">
+      <code style="display:block;background:var(--bg-card2);border-radius:8px;padding:14px 18px;font-size:13px;line-height:2;color:var(--teal)">
+        讀一本希臘史<br>
+        ↓&nbsp; 整理成時間線、人物關係、文明主題筆記<br>
+        ↓&nbsp; 轉成一篇公開文章或一份知識卡片<br>
+        ↓&nbsp; 累積成「歷史知識整理作品集」<br>
+        ↓&nbsp; 作品集成為轉職證據
+      </code>
+    </div>
+  </div>
+
+  <div class="notes-label">📝 個人筆記 — 我的第一個知識輸出想做什麼？</div>
+  <textarea class="notes-area" id="note-evidence" placeholder="例如：先從希臘文明整理一篇時間線，放在 Notion..."></textarea>
+</div>
+
+<!-- SECTION 2 — T SHAPE -->
+<div id="tshape" class="section">
+  <div class="section-header">
+    <div class="section-number">2</div>
+    <div>
+      <div class="section-title">T 型轉換學習策略</div>
+      <div class="section-subtitle">不是完全重讀一個文史科系，而是橫向擴展 + 縱向升級</div>
+    </div>
+  </div>
+
+  <div class="t-shape-container">
+    <div class="t-horizontal">
+      <div class="t-h-item"><strong>橫軸：文化產業理解</strong>博物館學入門</div>
+      <div class="t-h-item"><strong>HORIZONTAL BAR</strong>文化資產保存</div>
+      <div class="t-h-item"><strong>廣度</strong>典藏與檔案管理</div>
+      <div class="t-h-item"><strong></strong>展覽策劃基礎</div>
+      <div class="t-h-item"><strong></strong>數位典藏</div>
+      <div class="t-h-item"><strong></strong>文化機構營運</div>
+    </div>
+    <div class="t-vertical-wrapper">
+      <div class="t-vertical">
+        <div class="t-v-item">縱軸：財務 → 文化財務 <span class="t-v-arrow">↓</span></div>
+        <div class="t-v-item">會計帳務 → 補助案核銷 <span class="t-v-arrow">↓</span></div>
+        <div class="t-v-item">報表整理 → 計畫成果報告 <span class="t-v-arrow">↓</span></div>
+        <div class="t-v-item">流程檢核 → 典藏流程 SOP <span class="t-v-arrow">↓</span></div>
+        <div class="t-v-item">預算概念 → 展覽預算規劃 <span class="t-v-arrow">↓</span></div>
+        <div class="t-v-item">模組化思考 → 知識庫設計 <span class="t-v-arrow">↓</span></div>
+      </div>
+    </div>
+    <div class="t-label">T 型結構：橫向理解文化場域 × 縱向深化可轉移的財務能力</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔄 能力轉譯對照表</div>
+    <table class="simple">
+      <thead><tr><th>原本能力</th><th>轉譯後的文化場域能力</th></tr></thead>
+      <tbody>
+        <tr><td>會計帳務</td><td>文化機構財務管理、補助款使用</td></tr>
+        <tr><td>報表整理</td><td>補助案核銷與計畫報表</td></tr>
+        <tr><td>憑證管理</td><td>專案支出、採購與文件留存</td></tr>
+        <tr><td>流程檢核</td><td>內控、行政流程、典藏流程檢核</td></tr>
+        <tr><td>預算概念</td><td>展覽、研究、教育活動預算規劃</td></tr>
+        <tr><td>數字敏感度</td><td>文化專案成本與資源配置分析</td></tr>
+        <tr><td>模組化思考</td><td>SOP、檢核表、知識庫、資料庫設計</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card card-highlight">
+    <div class="card-title">💡 重新定位句</div>
+    <div class="card-body" style="color:var(--text);font-size:14px;line-height:1.9">
+      不要把自己定位成「會計」，而是定位成：<br>
+      <strong style="color:var(--accent-light)">「能協助文化機構建立清楚財務、行政、流程與資料管理的人」</strong>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3 — PHASES -->
+<div id="phases" class="section">
+  <div class="section-header">
+    <div class="section-number">3</div>
+    <div>
+      <div class="section-title">三階段低風險轉換</div>
+      <div class="section-subtitle">點擊各階段展開詳細內容與判斷標準</div>
+    </div>
+  </div>
+
+  <div class="phases">
+    <div class="phase-card" onclick="togglePhase(this)">
+      <div class="phase-head">
+        <div class="phase-num">PHASE 01</div>
+        <div class="phase-title">不轉職，建立可轉換資源</div>
+        <span class="phase-time">3–6 個月</span>
+      </div>
+      <div class="phase-body">
+        <div class="phase-content">
+          <ul>
+            <li>固定閱讀歷史／博物館相關書籍</li>
+            <li>每週整理一篇筆記</li>
+            <li>參觀博物館並寫展覽分析</li>
+            <li>研究文化機構職缺（看現實，不是想像）</li>
+            <li>整理自己的財務流程能力（準備轉譯履歷）</li>
+            <li>觀察現有工作的友善資源</li>
+          </ul>
+          <div class="phase-decision">
+            ✅ 通過標準：能否持續產出文博相關作品？是否開始看懂文化機構的工作邏輯？
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phase-card" onclick="togglePhase(this)">
+      <div class="phase-head">
+        <div class="phase-num">PHASE 02</div>
+        <div class="phase-title">找橋接角色</div>
+        <span class="phase-time">6–12 個月</span>
+      </div>
+      <div class="phase-body">
+        <div class="phase-content">
+          <ul>
+            <li><strong style="color:var(--secondary)">最高優先：</strong>文化機構財務／會計／行政</li>
+            <li><strong style="color:var(--primary-light)">高：</strong>博物館行政／專案助理／補助案管理</li>
+            <li><strong style="color:var(--primary-light)">高：</strong>文化基金會營運／財務／計畫管理</li>
+            <li><strong style="color:var(--text-muted)">中：</strong>數位典藏／資料管理助理</li>
+            <li><strong style="color:var(--text-muted)">低：</strong>完全非財務、低薪模糊行政職</li>
+          </ul>
+          <div class="phase-decision">
+            🎯 策略：先用財務與流程能力進入文化場域，再決定是否更深入文物、典藏或研究。
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="phase-card" onclick="togglePhase(this)">
+      <div class="phase-head">
+        <div class="phase-num">PHASE 03</div>
+        <div class="phase-title">決定是否深轉</div>
+        <span class="phase-time">12–24 個月</span>
+      </div>
+      <div class="phase-body">
+        <div class="phase-content">
+          <ul>
+            <li>文化機構財務／營運管理</li>
+            <li>博物館行政與典藏支援</li>
+            <li>數位典藏／資料管理</li>
+            <li>文物研究輔助</li>
+            <li>歷史內容整理與策展輔助</li>
+          </ul>
+          <div class="phase-decision">
+            🔍 判斷問題：喜歡工作日常嗎？薪資與升遷速度可接受嗎？遇到友善場域了嗎？有作品集嗎？
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4 — ROADMAP -->
+<div id="roadmap" class="section">
+  <div class="section-header">
+    <div class="section-number">4</div>
+    <div>
+      <div class="section-title">實際路線圖</div>
+      <div class="section-subtitle">目前最成熟的轉換路線</div>
+    </div>
+  </div>
+  <div class="roadmap">
+    <div class="roadmap-step">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-body">
+        <div class="roadmap-title">現職穩定保留</div>
+        <div class="roadmap-desc">保留心理安全感，不讓興趣承擔太早的收入壓力</div>
+      </div>
+    </div>
+    <div class="roadmap-step">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-body">
+        <div class="roadmap-title">把會計／財務能力整理成「流程與資源管理能力」</div>
+        <div class="roadmap-desc">轉譯履歷語言，讓文化機構看得懂你的價值</div>
+      </div>
+    </div>
+    <div class="roadmap-step">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-body">
+        <div class="roadmap-title">用 3–6 個月建立文博外部作品</div>
+        <div class="roadmap-desc">展覽分析 + 財務觀察報告 + 文物卡 + 流程模板</div>
+      </div>
+    </div>
+    <div class="roadmap-step">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-body">
+        <div class="roadmap-title">用作品接觸文化機構（講座、志工、課程、人脈）</div>
+        <div class="roadmap-desc">讓作品成為入場券，而不是只靠自我介紹</div>
+      </div>
+    </div>
+    <div class="roadmap-step">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-body">
+        <div class="roadmap-title">觀察場域是否友善</div>
+        <div class="roadmap-desc">組織文化比興趣更重要，不友善的場域會消耗你的資源</div>
+      </div>
+    </div>
+    <div class="roadmap-step">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-body">
+        <div class="roadmap-title">優先尋找文化機構財務／營運／行政橋接職位</div>
+        <div class="roadmap-desc">用財務進門，保留市場能力，不要完全斷掉籌碼</div>
+      </div>
+    </div>
+    <div class="roadmap-step accent">
+      <div class="roadmap-dot"></div>
+      <div class="roadmap-body">
+        <div class="roadmap-title" style="color:var(--teal)">再判斷是否深入典藏、文物研究或博物館專業</div>
+        <div class="roadmap-desc">第三階段才做真正的轉換決策，有場域體驗才準確</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5 — PROJECTS -->
+<div id="projects" class="section">
+  <div class="section-header">
+    <div class="section-number">5</div>
+    <div>
+      <div class="section-title">外部作品項目（職涯證據）</div>
+      <div class="section-subtitle">可公開、可放履歷、可作為作品集的內容。勾選已開始或完成的項目。</div>
+    </div>
+  </div>
+
+  <div class="project-card">
+    <div class="project-priority p1">1</div>
+    <div class="project-body">
+      <div class="project-title">
+        文化機構財務／營運觀察報告
+        <span class="badge badge-orange">最高優先</span>
+      </div>
+      <div class="project-desc">選 3–5 個文化機構或博物館，研究其收入來源、展覽活動、補助來源、會員制度、商店、教育推廣、營運挑戰，以及財務與流程管理可能需求。</div>
+      <div class="project-fields">
+        <span class="field-tag">機構定位</span><span class="field-tag">收入來源</span><span class="field-tag">補助來源</span>
+        <span class="field-tag">會員制度</span><span class="field-tag">營運挑戰</span><span class="field-tag">財務需求分析</span>
+      </div>
+      <label class="project-check"><input type="checkbox" class="task-check" data-id="proj1"> 已開始這個項目</label>
+    </div>
+  </div>
+
+  <div class="project-card">
+    <div class="project-priority p1">2</div>
+    <div class="project-body">
+      <div class="project-title">
+        博物館參訪與展覽分析
+        <span class="badge badge-orange">最高優先</span>
+      </div>
+      <div class="project-desc">每次參觀後，用工作者視角寫分析。不是寫心得，而是練習以文化機構工作者的視角理解展覽邏輯與營運。</div>
+      <div class="project-fields">
+        <span class="field-tag">展覽主題</span><span class="field-tag">物件選擇</span><span class="field-tag">敘事順序</span>
+        <span class="field-tag">觀眾動線</span><span class="field-tag">教育推廣</span><span class="field-tag">財務想像</span>
+      </div>
+      <label class="project-check"><input type="checkbox" class="task-check" data-id="proj2"> 已開始這個項目</label>
+    </div>
+  </div>
+
+  <div class="project-card">
+    <div class="project-priority p2">3</div>
+    <div class="project-body">
+      <div class="project-title">
+        文物資料卡／典藏資料整理練習
+        <span class="badge badge-blue">第二優先</span>
+      </div>
+      <div class="project-desc">選公開博物館資料庫的文物，練習整理成資料卡。驗證自己是否真的喜歡文物資料整理，而不是只喜歡看展。</div>
+      <div class="project-fields">
+        <span class="field-tag">文物名稱</span><span class="field-tag">年代</span><span class="field-tag">材質</span>
+        <span class="field-tag">歷史脈絡</span><span class="field-tag">關鍵字</span><span class="field-tag">個人整理摘要</span>
+      </div>
+      <label class="project-check"><input type="checkbox" class="task-check" data-id="proj3"> 已開始這個項目</label>
+    </div>
+  </div>
+
+  <div class="project-card">
+    <div class="project-priority p2">3</div>
+    <div class="project-body">
+      <div class="project-title">
+        歷史閱讀筆記作品集
+        <span class="badge badge-blue">第二優先</span>
+      </div>
+      <div class="project-desc">最低成本、最容易開始的項目。從「喜歡歷史的人」轉型成「能整理歷史知識的人」。適合放在 Notion、Medium 或個人網站。</div>
+      <div class="project-fields">
+        <span class="field-tag">時間線</span><span class="field-tag">人物關係圖</span><span class="field-tag">重要事件卡片</span>
+        <span class="field-tag">文明主題筆記</span><span class="field-tag">展品背景整理</span>
+      </div>
+      <label class="project-check"><input type="checkbox" class="task-check" data-id="proj4"> 已開始這個項目</label>
+    </div>
+  </div>
+
+  <div class="project-card">
+    <div class="project-priority p3">4</div>
+    <div class="project-body">
+      <div class="project-title">
+        文化專案流程模板
+        <span class="badge badge-teal">第三優先</span>
+      </div>
+      <div class="project-desc">符合極簡、流程、檢核點與模組化特質。設計出的模板能作為面試材料，清楚傳達：「我不只喜歡文化，我能幫文化機構把流程變清楚。」</div>
+      <div class="project-fields">
+        <span class="field-tag">展覽預算模板</span><span class="field-tag">活動核銷表</span><span class="field-tag">參訪紀錄模板</span>
+        <span class="field-tag">文物建檔模板</span><span class="field-tag">補助案清單</span><span class="field-tag">行政 SOP</span>
+      </div>
+      <label class="project-check"><input type="checkbox" class="task-check" data-id="proj5"> 已開始這個項目</label>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">🗂 作品集對應方向速查</div>
+    <table class="simple">
+      <thead><tr><th>目標方向</th><th>最應該做的項目</th></tr></thead>
+      <tbody>
+        <tr><td>文化機構財務／營運</td><td>財務觀察報告、預算模板、補助案流程模板</td></tr>
+        <tr><td>博物館行政／專案</td><td>展覽分析、活動 SOP、博物館參訪紀錄</td></tr>
+        <tr><td>典藏／文物資料管理</td><td>文物資料卡、數位典藏資料整理、分類架構</td></tr>
+        <tr><td>歷史內容整理</td><td>歷史閱讀筆記、時間線、人物關係圖</td></tr>
+        <tr><td>展覽策劃輔助</td><td>展覽分析、主題研究筆記、觀眾動線觀察</td></tr>
+        <tr><td>文化基金會／NGO</td><td>財務管理、專案管理、成果報告模板</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SECTION 6 — MATRIX -->
+<div id="matrix" class="section">
+  <div class="section-header">
+    <div class="section-number">6</div>
+    <div>
+      <div class="section-title">轉換決策矩陣</div>
+      <div class="section-subtitle">什麼時候該繼續學，什麼時候可以開始轉？</div>
+    </div>
+  </div>
+  <div class="card">
+    <table class="matrix-table">
+      <thead><tr><th>指標</th><th class="stay-text">還在學習期</th><th class="move-text">可以開始轉換</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>興趣穩定度</td>
+          <td class="stay-text">偶爾閱讀，還不穩定</td>
+          <td class="move-text">能連續 3–6 個月固定輸出</td>
+        </tr>
+        <tr>
+          <td>作品證據</td>
+          <td class="stay-text">只有興趣描述</td>
+          <td class="move-text">有 5–10 篇筆記、分析或模板</td>
+        </tr>
+        <tr>
+          <td>場域理解</td>
+          <td class="stay-text">只知道自己喜歡博物館</td>
+          <td class="move-text">知道博物館內部角色與工作現實</td>
+        </tr>
+        <tr>
+          <td>風險承受</td>
+          <td class="stay-text">擔心失去現有友善環境</td>
+          <td class="move-text">已找到可能友善的機構或橋接職位</td>
+        </tr>
+        <tr>
+          <td>財務安全</td>
+          <td class="stay-text">離職會明顯焦慮</td>
+          <td class="move-text">有存款、收入替代或低風險職缺</td>
+        </tr>
+        <tr>
+          <td>履歷轉譯</td>
+          <td class="stay-text">只寫會計經驗</td>
+          <td class="move-text">能寫出文化機構需要的財務／流程價值</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="info-box" style="margin-top:16px">
+    <strong>現況判斷：</strong>目前比較像是還不適合斷裂式轉職，但非常適合進入「轉換準備期」（Phase 01）。
+  </div>
+</div>
+
+<!-- SECTION 7 — STRATEGY -->
+<div id="strategy" class="section">
+  <div class="section-header">
+    <div class="section-number">7</div>
+    <div>
+      <div class="section-title">三種策略比較</div>
+      <div class="section-subtitle">策略 B 是目前最推薦的選擇</div>
+    </div>
+  </div>
+  <div class="strategy-grid">
+    <div class="strategy-card">
+      <div class="strategy-head">
+        <div class="strategy-label" style="color:var(--text-muted)">策略 A</div>
+        <div class="strategy-name">留在現職，只把歷史當興趣</div>
+      </div>
+      <div class="strategy-rows">
+        <div class="strategy-row"><span>風險</span><span class="risk-low">低</span></div>
+        <div class="strategy-row"><span>穩定性</span><span class="risk-low">高</span></div>
+        <div class="strategy-row"><span>興趣整合</span><span class="risk-med">低到中</span></div>
+        <div class="strategy-row"><span>長期意義感</span><span class="risk-high">可能不足</span></div>
+        <div class="strategy-row"><span>轉職準備</span><span class="risk-high">無</span></div>
+      </div>
+    </div>
+    <div class="strategy-card recommended">
+      <div class="strategy-head">
+        <div class="strategy-label" style="color:var(--accent-light)">策略 B ⭐</div>
+        <div class="strategy-name">保留現職，建立外部作品與場域接觸</div>
+        <span class="strategy-rec">目前最推薦</span>
+      </div>
+      <div class="strategy-rows">
+        <div class="strategy-row"><span>風險</span><span class="risk-low">低</span></div>
+        <div class="strategy-row"><span>穩定性</span><span class="risk-low">高</span></div>
+        <div class="strategy-row"><span>興趣整合</span><span class="risk-low">中到高</span></div>
+        <div class="strategy-row"><span>轉職準備</span><span class="risk-low">高</span></div>
+        <div class="strategy-row"><span>符合 COR 理論</span><span class="risk-low">是</span></div>
+      </div>
+    </div>
+    <div class="strategy-card">
+      <div class="strategy-head">
+        <div class="strategy-label" style="color:var(--danger)">策略 C</div>
+        <div class="strategy-name">直接轉去博物館／文博工作</div>
+      </div>
+      <div class="strategy-rows">
+        <div class="strategy-row"><span>風險</span><span class="risk-high">高</span></div>
+        <div class="strategy-row"><span>穩定性</span><span class="risk-high">不確定</span></div>
+        <div class="strategy-row"><span>興趣整合</span><span class="risk-med">表面高，實際未知</span></div>
+        <div class="strategy-row"><span>資源耗損</span><span class="risk-high">可能高</span></div>
+        <div class="strategy-row"><span>適合情境</span><span style="color:var(--text-muted);font-size:11px">有作品、人脈、場域理解與財務安全時</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 8 — 4 WEEKS -->
+<div id="fourweeks" class="section">
+  <div class="section-header">
+    <div class="section-number">8</div>
+    <div>
+      <div class="section-title">4 週啟動行動計畫</div>
+      <div class="section-subtitle">勾選完成的任務，進度自動儲存。</div>
+    </div>
+  </div>
+
+  <div class="week-container">
+    <div class="week-card">
+      <div class="week-head">
+        <div>
+          <div class="week-num">第一週</div>
+          <div class="week-title">整理轉換定位</div>
+        </div>
+        <div class="week-progress-mini" id="w1-pct">0/3</div>
+      </div>
+      <div class="week-tasks">
+        <div class="task-item" id="ti-w1-1"><input type="checkbox" class="task-check" data-id="w1-1"><label>撰寫職涯定位文字（我具備……，未來希望……）</label></div>
+        <div class="task-item" id="ti-w1-2"><input type="checkbox" class="task-check" data-id="w1-2"><label>列出自己的財務能力清單（整理成文化機構語言）</label></div>
+        <div class="task-item" id="ti-w1-3"><input type="checkbox" class="task-check" data-id="w1-3"><label>研究 3 個文化機構職缺，記下工作描述關鍵詞</label></div>
+      </div>
+    </div>
+
+    <div class="week-card">
+      <div class="week-head">
+        <div>
+          <div class="week-num">第二週</div>
+          <div class="week-title">做一篇展覽分析</div>
+        </div>
+        <div class="week-progress-mini" id="w2-pct">0/3</div>
+      </div>
+      <div class="week-tasks">
+        <div class="task-item" id="ti-w2-1"><input type="checkbox" class="task-check" data-id="w2-1"><label>選定一個博物館或展覽</label></div>
+        <div class="task-item" id="ti-w2-2"><input type="checkbox" class="task-check" data-id="w2-2"><label>用工作者視角完成展覽分析（8 個欄位）</label></div>
+        <div class="task-item" id="ti-w2-3"><input type="checkbox" class="task-check" data-id="w2-3"><label>加入財務與行政需求想像段落</label></div>
+      </div>
+    </div>
+
+    <div class="week-card">
+      <div class="week-head">
+        <div>
+          <div class="week-num">第三週</div>
+          <div class="week-title">文化機構財務觀察</div>
+        </div>
+        <div class="week-progress-mini" id="w3-pct">0/3</div>
+      </div>
+      <div class="week-tasks">
+        <div class="task-item" id="ti-w3-1"><input type="checkbox" class="task-check" data-id="w3-1"><label>選定一個文化機構（博物館、基金會、文化中心）</label></div>
+        <div class="task-item" id="ti-w3-2"><input type="checkbox" class="task-check" data-id="w3-2"><label>整理收入來源、展覽活動、補助結構</label></div>
+        <div class="task-item" id="ti-w3-3"><input type="checkbox" class="task-check" data-id="w3-3"><label>對應「我的能力如何支援這個機構」</label></div>
+      </div>
+    </div>
+
+    <div class="week-card">
+      <div class="week-head">
+        <div>
+          <div class="week-num">第四週</div>
+          <div class="week-title">整理第一版作品集</div>
+        </div>
+        <div class="week-progress-mini" id="w4-pct">0/5</div>
+      </div>
+      <div class="week-tasks">
+        <div class="task-item" id="ti-w4-1"><input type="checkbox" class="task-check" data-id="w4-1"><label>1 篇職涯定位說明</label></div>
+        <div class="task-item" id="ti-w4-2"><input type="checkbox" class="task-check" data-id="w4-2"><label>1 篇展覽分析</label></div>
+        <div class="task-item" id="ti-w4-3"><input type="checkbox" class="task-check" data-id="w4-3"><label>1 篇文化機構財務觀察</label></div>
+        <div class="task-item" id="ti-w4-4"><input type="checkbox" class="task-check" data-id="w4-4"><label>1 份歷史閱讀筆記</label></div>
+        <div class="task-item" id="ti-w4-5"><input type="checkbox" class="task-check" data-id="w4-5"><label>1 份流程模板</label></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes-label" style="margin-top:20px">📝 行動備忘</div>
+  <textarea class="notes-area" id="note-fourweeks" placeholder="記錄阻礙、想法、資源..."></textarea>
+</div>
+
+<!-- SECTION 9 — THEORIES -->
+<div id="theories" class="section">
+  <div class="section-header">
+    <div class="section-number">9</div>
+    <div>
+      <div class="section-title">職涯理論支援基礎</div>
+      <div class="section-subtitle">理解這些理論幫助你做出更有依據的決策，而不是憑感覺</div>
+    </div>
+  </div>
+  <div class="theory-grid">
+    <div class="theory-card">
+      <div class="theory-icon">🛡</div>
+      <div class="theory-name">COR 資源保存理論</div>
+      <div class="theory-en">Conservation of Resources Theory (Hobfoll)</div>
+      <div class="theory-body">個人會保護四種資源：物質資源、條件資源（工作穩定、資格）、個人資源（技能、特質）與能量資源（時間、金錢）。職涯轉換時，失去現有資源的威脅會觸發保護行為，策略 B 正是在保留資源的前提下建立新資源。</div>
+      <div class="theory-apply">→ 應用：保留友善工作 = 保留條件資源，避免在資源虧損狀態下做決策。</div>
+    </div>
+    <div class="theory-card">
+      <div class="theory-icon">🌱</div>
+      <div class="theory-name">永續職涯理論</div>
+      <div class="theory-en">Sustainable Career Theory (De Vos & Van der Heijden)</div>
+      <div class="theory-body">職涯永續的三個支柱：個人（主動管理職涯選擇）、情境（環境支援與工作生活平衡）、時間（在不同人生階段循環學習與調適）。成功指標是長期的快樂、健康與生產力三者兼具。</div>
+      <div class="theory-apply">→ 應用：策略 B 最符合永續職涯架構，不犧牲健康換速度。</div>
+    </div>
+    <div class="theory-card">
+      <div class="theory-icon">🌀</div>
+      <div class="theory-name">變形職涯</div>
+      <div class="theory-en">Protean Career (Hall)</div>
+      <div class="theory-body">職涯由個人而非組織主導，成功以內在標準（而非職位晉升）衡量。個人根據自身價值觀靈活移動，不受單一組織框架限制。</div>
+      <div class="theory-apply">→ 應用：把「我在文化產業中做什麼有意義的工作」而非「我爬到什麼位置」作為成功定義。</div>
+    </div>
+    <div class="theory-card">
+      <div class="theory-icon">🌉</div>
+      <div class="theory-name">橋接就業策略</div>
+      <div class="theory-en">Bridge Employment</div>
+      <div class="theory-body">橋接工作是職涯轉換中的過渡性角色，提供財務穩定、技能發展與新場域網絡，同時不強迫過早投入不熟悉的環境。戰略性地設定清楚目標，才能讓橋接工作真正有效。</div>
+      <div class="theory-apply">→ 應用：文化機構財務行政就是你的橋接工作，不是終點，而是入場券。</div>
+    </div>
+    <div class="theory-card">
+      <div class="theory-icon">📂</div>
+      <div class="theory-name">作品集職涯</div>
+      <div class="theory-en">Portfolio Career (Handy)</div>
+      <div class="theory-body">同時追求多個收入或意義來源（諮詢、顧問、自由接案、專案），而非線性地在單一組織晉升。有效建立需要找到核心主題，整合多元的工作樣本。</div>
+      <div class="theory-apply">→ 應用：你的外部作品就是在建立作品集職涯的基礎，展示整合型能力。</div>
+    </div>
+    <div class="theory-card">
+      <div class="theory-icon">🔗</div>
+      <div class="theory-name">跨界橋接角色</div>
+      <div class="theory-en">Boundary-Spanning Roles</div>
+      <div class="theory-body">跨界者能橋接不同機構語境，促進知識流通與合作。在文化機構中，能同時懂財務語言又懂文化使命的人，就是稀缺的跨界角色。</div>
+      <div class="theory-apply">→ 應用：你的財務背景 + 文博知識 = 稀缺的跨界橋接能力，而非「不夠純」的弱點。</div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 10 — ANCHORS -->
+<div id="anchors" class="section">
+  <div class="section-header">
+    <div class="section-number">10</div>
+    <div>
+      <div class="section-title">職涯錨點診斷</div>
+      <div class="section-subtitle">Edgar Schein 的 8 種職涯錨點 — 點選你最認同的（可多選）</div>
+    </div>
+  </div>
+  <div class="anchor-grid">
+    <div class="anchor-item" onclick="toggleAnchor(this,'a1')">
+      <span class="anchor-icon">🛠</span>
+      <div class="anchor-label"><strong>技術能力</strong>在特定技術領域持續精進</div>
+    </div>
+    <div class="anchor-item" onclick="toggleAnchor(this,'a2')">
+      <span class="anchor-icon">🏗</span>
+      <div class="anchor-label"><strong>管理能力</strong>透過他人完成目標，整合協調</div>
+    </div>
+    <div class="anchor-item" onclick="toggleAnchor(this,'a3')">
+      <span class="anchor-icon">🕊</span>
+      <div class="anchor-label"><strong>自主獨立</strong>按自己方式工作，不受束縛</div>
+    </div>
+    <div class="anchor-item" onclick="toggleAnchor(this,'a4')">
+      <span class="anchor-icon">🔒</span>
+      <div class="anchor-label"><strong>安全穩定</strong>穩定就業、可預測的工作環境</div>
+    </div>
+    <div class="anchor-item" onclick="toggleAnchor(this,'a5')">
+      <span class="anchor-icon">🚀</span>
+      <div class="anchor-label"><strong>創業能力</strong>創造新事物，建立自己的東西</div>
+    </div>
+    <div class="anchor-item" onclick="toggleAnchor(this,'a6')">
+      <span class="anchor-icon">🌍</span>
+      <div class="anchor-label"><strong>服務使命</strong>為社會或文化使命貢獻</div>
+    </div>
+    <div class="anchor-item" onclick="toggleAnchor(this,'a7')">
+      <span class="anchor-icon">⚡</span>
+      <div class="anchor-label"><strong>純粹挑戰</strong>克服困難問題是本身的動力</div>
+    </div>
+    <div class="anchor-item" onclick="toggleAnchor(this,'a8')">
+      <span class="anchor-icon">⚖️</span>
+      <div class="anchor-label"><strong>生活整合</strong>工作與生活方式彼此兼容</div>
+    </div>
+  </div>
+  <div id="anchor-result" class="info-box" style="margin-top:16px;display:none"></div>
+
+  <div class="notes-label" style="margin-top:16px">📝 我的錨點反思</div>
+  <textarea class="notes-area" id="note-anchors" placeholder="記錄你選了哪些錨點，以及這對你的文博轉換策略有什麼意義..."></textarea>
+</div>
+
+<!-- SYNTHESIS -->
+<div id="synthesis" class="section">
+  <div class="section-header">
+    <div class="section-number">11</div>
+    <div>
+      <div class="section-title">核心總結</div>
+    </div>
+  </div>
+  <div class="summary-box">
+    <h3>策略核心一句話</h3>
+    <blockquote>
+      用現有友善工作作為資源基地，用學習建立知識，用外部作品建立轉換證據，再用低風險方式測試文化與博物館場域。
+    </blockquote>
+    <blockquote>
+      先不要把興趣變成壓力來源，而是把興趣變成作品；不要把轉職變成賭注，而是把轉職變成逐步累積出來的選項。
+    </blockquote>
+  </div>
+
+  <div class="card" style="margin-top:24px">
+    <div class="card-title">📌 職涯定位模板</div>
+    <div class="card-body" style="color:var(--text);font-size:14px;line-height:1.9;font-style:italic;border-left:3px solid var(--primary);padding-left:16px">
+      「我具備會計與財務工作經驗，擅長透過流程、檢核點與筆記系統，將工作整理成可追蹤、可重複與可優化的模組。未來希望將這套財務與流程管理能力，應用於文化機構、博物館、文物資料或知識管理相關場域。」
+    </div>
+  </div>
+
+  <div class="notes-label" style="margin-top:20px">📝 我的個人版職涯定位（改寫成自己的語氣）</div>
+  <textarea class="notes-area" id="note-synthesis" placeholder="用自己的話重寫職涯定位..." style="min-height:100px"></textarea>
+</div>
+
+<div style="height:60px"></div>
+</main>
+</div>
+
+<script>
+// ── TASK PERSISTENCE ──
+const STORAGE_KEY = 'xiowen_career_v1';
+function getState(){ try{return JSON.parse(localStorage.getItem(STORAGE_KEY))||{}}catch(e){return{}} }
+function saveState(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) }
+
+function initTasks(){
+  const s = getState();
+  document.querySelectorAll('.task-check').forEach(cb=>{
+    const id = cb.dataset.id;
+    if(s[id]) cb.checked = true;
+    const item = cb.closest('.task-item');
+    if(item && cb.checked) item.classList.add('done');
+    cb.addEventListener('change',()=>{
+      const st = getState();
+      st[id] = cb.checked;
+      saveState(st);
+      const ti = cb.closest('.task-item');
+      if(ti) ti.classList.toggle('done', cb.checked);
+      updateProgress();
+    });
+  });
+}
+
+function updateProgress(){
+  const all = document.querySelectorAll('.task-check');
+  const done = [...all].filter(c=>c.checked).length;
+  const pct = Math.round(done/all.length*100);
+  document.getElementById('progress-pct').textContent = pct+'%';
+  document.getElementById('progress-fill').style.width = pct+'%';
+
+  // per-week
+  [[1,3],[2,3],[3,3],[4,5]].forEach(([w,n],i)=>{
+    const wn = i+1;
+    const wdone = [...document.querySelectorAll(`[data-id^="w${wn}-"]`)].filter(c=>c.checked).length;
+    const el = document.getElementById(`w${wn}-pct`);
+    if(el) el.textContent = wdone+'/'+n;
+  });
+}
+
+// ── NOTES PERSISTENCE ──
+function initNotes(){
+  const s = getState();
+  document.querySelectorAll('textarea[id^="note-"]').forEach(ta=>{
+    if(s[ta.id]) ta.value = s[ta.id];
+    ta.addEventListener('input',()=>{
+      const st = getState();
+      st[ta.id] = ta.value;
+      saveState(st);
+    });
+  });
+}
+
+// ── PHASES TOGGLE ──
+function togglePhase(el){
+  const wasOpen = el.classList.contains('open');
+  document.querySelectorAll('.phase-card').forEach(c=>c.classList.remove('open'));
+  if(!wasOpen) el.classList.add('open');
+}
+
+// ── ANCHOR TOGGLE ──
+function toggleAnchor(el, id){
+  el.classList.toggle('selected');
+  const s = getState();
+  s['anchor_'+id] = el.classList.contains('selected');
+  saveState(s);
+  updateAnchorResult();
+}
+function initAnchors(){
+  const s = getState();
+  const map = {'a1':'技術能力','a2':'管理能力','a3':'自主獨立','a4':'安全穩定','a5':'創業能力','a6':'服務使命','a7':'純粹挑戰','a8':'生活整合'};
+  document.querySelectorAll('.anchor-item').forEach((el,i)=>{
+    const key = 'a'+(i+1);
+    if(s['anchor_'+key]) el.classList.add('selected');
+  });
+  updateAnchorResult();
+}
+function updateAnchorResult(){
+  const selected = [...document.querySelectorAll('.anchor-item.selected')].map(el=>el.querySelector('strong').textContent);
+  const box = document.getElementById('anchor-result');
+  if(selected.length===0){box.style.display='none';return;}
+  box.style.display='block';
+  const hints = {
+    '技術能力':'你重視在文博知識上的深度積累，典藏研究或數位典藏方向適合你。',
+    '管理能力':'你重視整合協調能力，文化機構營運管理或專案主任是好方向。',
+    '自主獨立':'你需要自主性，考慮自由策展、顧問或知識整理接案。',
+    '安全穩定':'你重視穩定，橋接策略最適合你，不要急著做斷裂式轉換。',
+    '創業能力':'你有建立新事物的驅動力，考慮文化創新或獨立策展計畫。',
+    '服務使命':'你被文化保存使命驅動，這是進入文博場域最重要的內在動機。',
+    '純粹挑戰':'你需要智識挑戰，研究助理或複雜典藏管理專案適合你。',
+    '生活整合':'你重視工作與生活的兼容性，選機構時要特別觀察組織文化。'
+  };
+  const tips = selected.map(a=>hints[a]).filter(Boolean);
+  box.innerHTML = '<strong>你的職涯錨點：</strong>'+selected.join('、')+'<br><br>'+tips.join('<br>');
+}
+
+// ── NAV HIGHLIGHT ──
+function initNav(){
+  const sections = document.querySelectorAll('.section, .hero');
+  const navItems = document.querySelectorAll('.nav-item');
+  const obs = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        const id = e.target.id;
+        navItems.forEach(n=>{
+          n.classList.toggle('active', n.getAttribute('href')==='#'+id);
+        });
+      }
+    });
+  },{threshold:.3});
+  sections.forEach(s=>obs.observe(s));
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded',()=>{
+  initTasks();
+  initNotes();
+  initAnchors();
+  initNav();
+  updateProgress();
+});
+</script>
+</body>
+</html>

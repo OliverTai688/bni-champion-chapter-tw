@@ -6,19 +6,50 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:validate": "prisma validate",
+    "seed:current-layout:dry-run": "node scripts/seed-current-layout.mjs --dry-run",
+    "seed:current-layout:write": "node scripts/seed-current-layout.mjs --write"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1070.0",
+    "@aws-sdk/s3-request-presigner": "^3.1070.0",
+    "@base-ui/react": "^1.4.1",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@prisma/client": "6.19.0",
+    "class-variance-authority": "^0.7.1",
+    "framer-motion": "^12.38.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "next": "16.2.4",
+    "next-auth": "5.0.0-beta.31",
+    "next-themes": "^0.4.6",
+    "papaparse": "^5.5.3",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "server-only": "^0.0.1",
+    "shadcn": "^4.6.0",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "autoprefixer": "^10.5.0",
+    "clsx": "^2.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "lucide-react": "^1.14.0",
+    "postcss": "^8.5.12",
+    "prisma": "6.19.0",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^3.4.19",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5"
   }
 }

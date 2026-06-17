@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:web.dev)",
+      "WebFetch(domain:www.shadcn.io)",
+      "Bash(pnpm build *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/seats)",
+      "Bash(curl -s http://localhost:3000/seats)",
+      "WebFetch(domain:blog.react-pdf-kit.dev)",
+      "WebFetch(domain:react-pdf.org)",
+      "WebFetch(domain:dominikfrackowiak.com)"
+    ]
+  }
+}

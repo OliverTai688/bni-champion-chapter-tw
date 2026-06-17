@@ -1,0 +1,11 @@
+{
+  "project": "take-seat",
+  "status": "READY_TO_START",
+  "currentBatch": "TAKE-AUDIT-001",
+  "currentSlice": "current-codebase-audit-and-contract-gap",
+  "cycle": 0,
+  "stopAfterCycles": 1,
+  "lastReport": null,
+  "reportDirectory": "docs/2_agent-input/generated/agent-loop/reports",
+  "nextRecommendedAction": "Audit current routes, components, data contracts, validation, storage, and gaps before implementing live seat map features."
+}
