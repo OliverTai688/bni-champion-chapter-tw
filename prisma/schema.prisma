@@ -55,6 +55,41 @@ enum OperationActorRole {
   import
 }
 
+enum PublicEventStatus {
+  draft
+  preview
+  published
+  live
+  completed
+  archived
+  hidden
+}
+
+enum LivePollType {
+  single_choice
+  multiple_choice
+}
+
+enum LivePollStatus {
+  draft
+  open
+  closed
+  archived
+}
+
+enum LivePollEligibility {
+  public
+  code_required
+  signed_in_member
+}
+
+enum LivePollResultVisibility {
+  hidden
+  after_closed
+  live_public
+  admin_only
+}
+
 model MeetingSession {
   id           String               @id @default(auto()) @map("_id") @db.ObjectId
   weekId       String               @unique
@@ -64,15 +99,20 @@ model MeetingSession {
   meetingLabel String
   source       String               @default("seed")
   status       MeetingSessionStatus @default(draft)
+  publicSlug   String?              @unique
+  publicStatus PublicEventStatus    @default(draft)
+  publicConfig Json?
   metadata     Json?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
   seatMaps      SeatMap[]
   operationLogs OperationLog[]
+  livePolls     LivePoll[]
 
   @@index([date])
   @@index([status])
+  @@index([publicStatus])
 }
 
 model Member {
@@ -87,6 +127,7 @@ model Member {
   updatedAt   DateTime @updatedAt
 
   assignments SeatAssignment[]
+  pollOptions  LivePollOption[]
 
   @@index([isActive])
 }
@@ -113,6 +154,27 @@ model SeatMap {
 
   @@index([sessionId])
   @@index([status])
+}
+
+model SeatTemplate {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  name            String   @unique
+  description     String?
+  layoutKind      String   @default("bni-weekly-grid")
+  topRoles        Json
+  items           Json
+  memberRoster    String[]
+  heroes          String[]
+  industryChains  Json?
+  sourceWeekId    String?
+  sourceSeatMapId String?
+  isActive        Boolean  @default(true)
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sourceWeekId])
 }
 
 model Seat {
@@ -194,6 +256,69 @@ model OperationLog {
   @@index([action])
   @@index([targetType])
   @@index([createdAt])
+}
+
+model LivePoll {
+  id               String                   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId        String                   @db.ObjectId
+  session          MeetingSession           @relation(fields: [sessionId], references: [id])
+  title            String
+  description      String?
+  type             LivePollType             @default(single_choice)
+  status           LivePollStatus           @default(draft)
+  eligibility      LivePollEligibility      @default(code_required)
+  resultVisibility LivePollResultVisibility @default(after_closed)
+  voteCodeHash     String?
+  opensAt          DateTime?
+  closesAt         DateTime?
+  metadata         Json?
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  options LivePollOption[]
+  votes   LivePollVote[]
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([eligibility])
+}
+
+model LivePollOption {
+  id                String         @id @default(auto()) @map("_id") @db.ObjectId
+  pollId            String         @db.ObjectId
+  poll              LivePoll       @relation(fields: [pollId], references: [id])
+  memberId          String?        @db.ObjectId
+  member            Member?        @relation(fields: [memberId], references: [id])
+  label             String
+  publicDescription String?
+  position          Int
+  isActive          Boolean        @default(true)
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  votes LivePollVote[]
+
+  @@index([pollId])
+  @@index([memberId])
+  @@index([isActive])
+}
+
+model LivePollVote {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  pollId             String         @db.ObjectId
+  poll               LivePoll       @relation(fields: [pollId], references: [id])
+  optionId           String         @db.ObjectId
+  option             LivePollOption @relation(fields: [optionId], references: [id])
+  tokenHash          String
+  anonymousVoterHash String?
+  metadata           Json?
+  submittedAt        DateTime       @default(now())
+
+  @@unique([pollId, tokenHash])
+  @@index([pollId])
+  @@index([optionId])
+  @@index([submittedAt])
 }
 
 model Asset {

@@ -1,46 +1,138 @@
-import SeatingArranger from '@/components/SeatingArranger';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { ClipboardList, ExternalLink, FileText, Vote } from 'lucide-react';
 import { AuthButton } from '@/components/auth-button';
+import { SeatMapCreatePanel } from '@/components/seat-map-create-panel';
 import { ThemeToggle } from '@/components/theme-toggle';
-import {
-  CURRENT_MEETING_WEEK,
-  CURRENT_SEATING_MEMBER_ROSTER,
-  CURRENT_SEATING_HEROES,
-  CURRENT_SEATING_LAYOUT,
-} from '@/lib/seating-week';
+import { listAdminEventSessions, listSeatTemplates } from '@/server/repositories/admin-event-sessions-repository';
 
 export const metadata = {
-  title: '座位安排 | Take Seat',
-  description: '智慧座位安排與調整工具',
+  title: '座位表管理 | Take Seat',
+  description: '管理多個活動日期的座位表',
 };
 
-export default async function SeatingPage() {
-  const layout = CURRENT_SEATING_LAYOUT;
-  const week = CURRENT_MEETING_WEEK;
+export default async function SeatingIndexPage(props: PageProps<'/seats'>) {
+  const searchParams = await props.searchParams;
+  if (typeof searchParams.weekId === 'string' && searchParams.weekId) {
+    redirect(`/seats/${encodeURIComponent(searchParams.weekId)}`);
+  }
+
+  const sessions = await listAdminEventSessions();
+  const templates = await listSeatTemplates();
+  const totalSeats = sessions.reduce((sum, session) => sum + (session.latestSeatMap?.seatCount ?? 0), 0);
+  const totalAssigned = sessions.reduce((sum, session) => sum + (session.latestSeatMap?.assignmentCount ?? 0), 0);
+  const openPollCount = sessions.reduce((sum, session) => sum + session.openPollCount, 0);
 
   return (
-    <main className="min-h-screen bg-background text-foreground py-16 transition-colors">
-      <div className="max-w-6xl mx-auto px-6 mb-8 flex items-end justify-between">
-        <div>
-          <div className="text-xs font-black uppercase tracking-[0.28em] text-foreground/35 mb-2">
-            {week.chapterName}
+    <main className="min-h-screen bg-background px-6 py-12 text-foreground">
+      <section className="mx-auto max-w-6xl">
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.28em] text-foreground/35">BNI 長冠軍分會</div>
+            <h1 className="mt-2 text-4xl font-black">座位表管理</h1>
+            <p className="mt-2 max-w-2xl text-sm text-foreground/55">
+              先選擇活動日期，再進入單一天的座位編輯器。公開頁、投票與匯出都應綁定到明確的活動座位表。
+            </p>
           </div>
-          <h1 className="text-4xl font-bold premium-gradient-text mb-2">{week.title}</h1>
-          <p className="text-foreground/50 text-sm">
-            以每週例會排座規則為核心，支援本機草稿、規則檢查、CSV 與 PDF 匯出。
-          </p>
-        </div>
-        <div className="flex gap-4 items-center no-print">
-          <AuthButton />
-          <ThemeToggle />
-        </div>
-      </div>
+          <div className="flex items-center gap-4">
+            <AuthButton />
+            <ThemeToggle />
+          </div>
+        </header>
 
-      <SeatingArranger
-        week={week}
-        initialLayout={layout}
-        initialHeroes={CURRENT_SEATING_HEROES}
-        initialMemberRoster={CURRENT_SEATING_MEMBER_ROSTER}
-      />
+        <div className="mb-6 grid gap-3 md:grid-cols-3">
+          <Metric label="活動日期" value={sessions.length} />
+          <Metric label="座位安排" value={`${totalAssigned}/${totalSeats}`} />
+          <Metric label="開放投票" value={openPollCount} />
+        </div>
+
+        <SeatMapCreatePanel sessions={sessions} templates={templates} />
+
+        <section className="overflow-hidden rounded-lg border border-foreground/10">
+          <div className="hidden grid-cols-[0.9fr_1.35fr_0.75fr_0.75fr_0.75fr_1fr] gap-3 bg-foreground/[0.04] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-foreground/40 lg:grid">
+            <span>Date</span>
+            <span>Title</span>
+            <span>Seats</span>
+            <span>Public</span>
+            <span>Polls</span>
+            <span>Actions</span>
+          </div>
+
+          {sessions.length > 0 ? (
+            <div className="divide-y divide-foreground/10">
+              {sessions.map((session) => (
+                <div key={session.weekId} className="grid gap-3 px-4 py-4 text-sm lg:grid-cols-[0.9fr_1.35fr_0.75fr_0.75fr_0.75fr_1fr] lg:items-center">
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-[0.14em] text-foreground/35 lg:hidden">Date</div>
+                    <div className="font-black">{session.weekId}</div>
+                    <div className="text-xs text-foreground/45">
+                      {new Date(session.date).toLocaleDateString('zh-TW')}
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-black uppercase tracking-[0.14em] text-foreground/35 lg:hidden">Title</div>
+                    <div className="truncate font-black">{session.title}</div>
+                    <div className="truncate text-xs text-foreground/45">{session.meetingLabel}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-[0.14em] text-foreground/35 lg:hidden">Seats</div>
+                    {session.latestSeatMap
+                      ? `${session.latestSeatMap.assignmentCount}/${session.latestSeatMap.seatCount}`
+                      : '尚無'}
+                  </div>
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-[0.14em] text-foreground/35 lg:hidden">Public</div>
+                    {session.publicStatus}
+                  </div>
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-[0.14em] text-foreground/35 lg:hidden">Polls</div>
+                    {session.openPollCount} open / {session.pollCount}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href={`/seats/${encodeURIComponent(session.weekId)}`}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-foreground px-3 py-2 text-xs font-black text-background"
+                    >
+                      <ClipboardList className="h-3.5 w-3.5" />
+                      編輯
+                    </Link>
+                    {session.publicSlug ? (
+                      <Link
+                        href={`/w/${session.publicSlug}`}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-foreground/10 px-3 py-2 text-xs font-black text-foreground/65"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        公開頁
+                      </Link>
+                    ) : null}
+                    <Link
+                      href={`/admin/events/${encodeURIComponent(session.weekId)}`}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-foreground/10 px-3 py-2 text-xs font-black text-foreground/65"
+                    >
+                      <Vote className="h-3.5 w-3.5" />
+                      營運
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-4 py-10 text-sm text-foreground/50">
+              <FileText className="h-4 w-4" />
+              尚未建立任何活動座位表。
+            </div>
+          )}
+        </section>
+      </section>
     </main>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border border-foreground/10 bg-foreground/[0.03] px-4 py-3">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-foreground/35">{label}</div>
+      <div className="mt-1 text-2xl font-black">{value}</div>
+    </div>
   );
 }

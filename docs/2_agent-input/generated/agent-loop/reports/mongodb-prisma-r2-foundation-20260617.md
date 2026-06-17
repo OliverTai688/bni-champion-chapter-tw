@@ -20,7 +20,7 @@ This batch adds server-side persistence/storage foundations only:
 - Approved R2 write/head/delete proof.
 - Read-only repository and API boundary for persisted seat maps.
 - Write boundary for MongoDB draft saves from the seating workspace.
-- Google sign-in foundation and API protection.
+- Google sign-in foundation, login UI, and API protection.
 
 ## Files Changed
 
@@ -62,6 +62,9 @@ This batch adds server-side persistence/storage foundations only:
 - Google sign-in was added through Auth.js/NextAuth with the Google provider.
 - `/api/auth/[...nextauth]` exposes Auth.js route handlers.
 - `/seats` now shows a Google login/logout button.
+- Local `.env` was checked without printing secrets. `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `AUTH_SECRET` are present; the Google client ID format and Auth secret length look valid.
+- `src/components/auth-button.tsx` now shows loading, signed-out, and signed-in states with clear sync/logout actions.
+- `src/components/SeatingArranger.tsx` now treats unauthenticated saves as local-only and offers a Google login action for MongoDB sync.
 - `GET /api/seats/[weekId]?view=admin` and `PATCH /api/seats/[weekId]` require sign-in.
 - `GET /api/seats/[weekId]` remains public and returns anonymous summary only.
 - R2 client creation is server-only and lazy: importing the helper does not require credentials, but using `getR2Config()` does.
@@ -85,7 +88,9 @@ GET http://localhost:3000/api/seats/not-found-week
 PATCH http://localhost:3000/api/seats/2026-06-11
 GET http://localhost:3000/api/seats/2026-06-11?view=admin without sign-in
 PATCH http://localhost:3000/api/seats/2026-06-11 without sign-in
+GET http://localhost:3000/api/auth/providers
 git diff --check -- package.json pnpm-lock.yaml prisma/schema.prisma src/server/db/prisma.ts src/server/storage/r2-client.ts scripts/seed-current-layout.mjs .env.example .gitignore docs/05_execution-plans/PLN-002_mongodb-prisma-r2-development-plan.md
+git diff --check -- src/auth.ts src/app/api/auth/[...nextauth]/route.ts src/app/api/seats/[weekId]/route.ts src/components/app-providers.tsx src/components/auth-button.tsx src/components/SeatingArranger.tsx src/app/layout.tsx src/app/seats/page.tsx package.json pnpm-lock.yaml .env.example
 ```
 
 Results:
@@ -140,6 +145,8 @@ Results:
   - public `GET /api/seats/2026-06-11` returned 200.
   - admin `GET /api/seats/2026-06-11?view=admin` returned 401.
   - `PATCH /api/seats/2026-06-11` returned 401.
+- Auth provider proof passed:
+  - `GET /api/auth/providers` returned 200.
 - Targeted `git diff --check` passed.
 
 R2 read-only proof:
@@ -168,7 +175,7 @@ Known unrelated issue:
 
 ## Remaining Batch Tasks
 
-Next recommended step: finish Google OAuth manual setup, then move to DATA-005 presigned upload route or add stronger role-based admin authorization.
+Next recommended step: manually complete one real Google OAuth sign-in, then add stronger role-based admin authorization or move to DATA-005 presigned upload route.
 
 Remaining from DATA-003:
 
@@ -179,6 +186,7 @@ Remaining from DATA-004:
 - Decide when `/seats` should consume MongoDB DTOs instead of only seed/localStorage.
 - Add role-based authorization before exposing admin DTO beyond trusted users.
 - Optionally persist Auth.js users/accounts in MongoDB with an adapter later.
+- Confirm production OAuth callback URLs before deploying.
 
 Remaining from DATA-005:
 
@@ -217,6 +225,8 @@ Manual operation required before any real R2 write:
 Potential blocker:
 
 - pnpm v10 warned that build scripts for Prisma packages were ignored and suggested `pnpm approve-builds`. Validation and generation still passed in this run, but future fresh installs may need manual approval.
+- A real Google OAuth browser login still requires the user account flow. If it fails, first check the Google Cloud authorized redirect URI: `http://localhost:3000/api/auth/callback/google` for local development.
+- Admin/write access currently means "signed in with an allowed Google account." If `AUTH_ALLOWED_EMAILS` or `AUTH_ALLOWED_DOMAIN` is not configured, any Google account can sign in.
 
 Potential design decision:
 

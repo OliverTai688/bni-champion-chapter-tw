@@ -6,6 +6,11 @@ import { prisma } from '@/server/db/prisma';
 
 const DRAFT_SOURCE = 'browser-draft';
 const LAYOUT_KIND = 'bni-weekly-grid';
+const DRAFT_PUBLIC_SLUG_PREFIX = '__draft__';
+
+function draftPublicSlug(weekId: string) {
+  return `${DRAFT_PUBLIC_SLUG_PREFIX}${weekId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
 
 export async function findLatestSeatMapByWeekId(weekId: string) {
   const session = await prisma.meetingSession.findUnique({
@@ -80,6 +85,7 @@ export async function saveSeatingDraft(draft: NormalizedSeatingDraft) {
       meetingLabel: draft.week.meetingLabel,
       source: draft.week.source,
       status: 'draft',
+      publicSlug: draftPublicSlug(draft.week.id),
       metadata: {
         savedFrom: 'seating-workspace',
       },

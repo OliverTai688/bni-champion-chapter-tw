@@ -103,6 +103,7 @@ Tasks:
 - [x] Wire seating workspace save to localStorage + MongoDB draft save.
 - [x] Add Google sign-in foundation with Auth.js.
 - [x] Protect admin seat DTO and MongoDB draft save route behind sign-in.
+- [x] Add `/seats` login/logout UI and local-only save messaging for signed-out users.
 
 Acceptance:
 
@@ -112,6 +113,8 @@ Acceptance:
 - Failed remote save does not remove the localStorage draft.
 - Public DTO stays readable without sign-in.
 - Admin DTO and write route return 401 without sign-in.
+- Signed-out users can still save browser-local drafts and see how to sign in for MongoDB sync.
+- Auth environment includes `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, and `AUTH_SECRET`.
 
 ## Batch DATA-005 - R2 Asset Foundation
 

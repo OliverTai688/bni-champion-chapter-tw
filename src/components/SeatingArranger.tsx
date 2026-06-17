@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { signIn, useSession } from 'next-auth/react';
 import {
   DndContext,
   closestCenter,
@@ -419,8 +420,9 @@ export default function SeatingArranger({
   const [dirty, setDirty] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [storageReady, setStorageReady] = useState(false);
-  const [remoteSaveStatus, setRemoteSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [remoteSaveStatus, setRemoteSaveStatus] = useState<'idle' | 'local' | 'saving' | 'saved' | 'error'>('idle');
   const [remoteSaveMessage, setRemoteSaveMessage] = useState<string | null>(null);
+  const { status: authStatus } = useSession();
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -512,6 +514,13 @@ export default function SeatingArranger({
     localSeatingWorkspaceRepository.save(currentState);
     setLastSavedAt(savedAt);
     setDirty(false);
+
+    if (authStatus !== 'authenticated') {
+      setRemoteSaveStatus('local');
+      setRemoteSaveMessage('已保存本機草稿；Google 登入後可同步 MongoDB。');
+      return;
+    }
+
     setRemoteSaveStatus('saving');
     setRemoteSaveMessage(null);
 
@@ -586,7 +595,9 @@ export default function SeatingArranger({
                 <p className={`mt-1 text-xs ${
                   remoteSaveStatus === 'error'
                     ? 'text-red-600 dark:text-red-300'
-                    : 'text-emerald-600 dark:text-emerald-300'
+                    : remoteSaveStatus === 'local'
+                      ? 'text-amber-600 dark:text-amber-300'
+                      : 'text-emerald-600 dark:text-emerald-300'
                 }`}>
                   {remoteSaveMessage}
                 </p>
@@ -612,10 +623,13 @@ export default function SeatingArranger({
             <ActionButton
               onClick={handleSave}
               icon={<Save className="h-4 w-4" />}
-              label={remoteSaveStatus === 'saving' ? '保存中...' : '保存更改'}
+              label={remoteSaveStatus === 'saving' ? '保存中...' : authStatus === 'authenticated' ? '保存並同步' : '保存本機'}
               primary
               disabled={remoteSaveStatus === 'saving'}
             />
+            {authStatus === 'unauthenticated' && (
+              <ActionButton onClick={() => signIn('google')} icon={<Info className="h-4 w-4" />} label="登入同步" />
+            )}
             <ActionButton onClick={handleReset} icon={<RotateCcw className="h-4 w-4" />} label="重設本週" />
             <ActionButton onClick={handleExportCSV} icon={<Download className="h-4 w-4" />} label="匯出 CSV" />
             <ActionButton onClick={handleExportPDF} icon={<Printer className="h-4 w-4" />} label="匯出 PDF" />

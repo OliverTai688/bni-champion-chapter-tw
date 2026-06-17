@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Home() {
   return (
     <main style={{
@@ -84,7 +86,7 @@ export default function Home() {
           justifyContent: "center",
           flexWrap: "wrap"
         }}>
-          <a href="/seats" style={{
+          <Link href="/seats" style={{
             padding: "1rem 2.5rem",
             borderRadius: "14px",
             background: "var(--foreground)",
@@ -94,7 +96,7 @@ export default function Home() {
             textDecoration: "none"
           }}>
             立即開始
-          </a>
+          </Link>
           <button className="glass-panel" style={{
             padding: "1rem 2.5rem",
             borderRadius: "14px",

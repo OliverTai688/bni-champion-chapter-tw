@@ -32,6 +32,8 @@ weekly seating workspace
 
 - Work one batch at a time.
 - Do not process unrelated batches because they are nearby.
+- For the seat page refactor, follow root `AGENTS.md` batches `SEAT-IA-001` through `SEAT-IA-006` in order.
+- Do not add more date/event creation controls to `SeatingArranger`; move those concerns to the `/seats` index batch.
 - If a product, privacy, or persistence decision is missing, stop and report.
 - Preserve unrelated worktree changes.
 - Do not mutate production databases or external systems without explicit approval.

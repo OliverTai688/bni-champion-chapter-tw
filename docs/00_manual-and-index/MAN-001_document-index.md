@@ -33,14 +33,21 @@ Existing root-level docs remain references until a cleanup batch moves them.
 ## Live Seat Map Planning Set
 
 - `docs/01_product-requirements/PRD-001_live-seat-map-attendance-voting.md`
+- `docs/01_product-requirements/PRD-002_weekly-public-event-page-and-anonymous-star-voting.md`
 - `docs/02_architecture-and-rules/ARC-001_live-seat-map-attendance-voting-architecture.md`
 - `docs/02_architecture-and-rules/ARC-002_mongodb-prisma-r2-storage-architecture.md`
+- `docs/02_architecture-and-rules/ARC-003_weekly-public-page-and-vote-access-architecture.md`
+- `docs/02_architecture-and-rules/ARC-004_multi-day-seat-map-and-poll-targeting-architecture.md`
+- `docs/02_architecture-and-rules/ARC-005_one-to-many-seat-template-event-page-architecture.md`
 - `docs/03_feature-reference/REF-001_current-seating-workspace.md`
 - `docs/03_feature-reference/REF-002_current-feature-inventory.md`
+- `docs/03_feature-reference/REF-003_multi-date-seating-template-workflow.md`
 - `docs/05_execution-plans/PLN-001_live-seat-map-attendance-voting-batch-plan.md`
 - `docs/05_execution-plans/PLN-002_mongodb-prisma-r2-development-plan.md`
+- `docs/05_execution-plans/PLN-003_weekly-public-page-and-star-voting-batch-plan.md`
 - `docs/08_acceptance-and-qa/ACC-001_live-seat-map-attendance-voting-acceptance.md`
 - `docs/08_acceptance-and-qa/ACC-002_mongodb-prisma-r2-acceptance.md`
+- `docs/08_acceptance-and-qa/ACC-003_weekly-public-page-and-star-voting-acceptance.md`
 
 ## Agent Loop References
 

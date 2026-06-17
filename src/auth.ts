@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
+import { recordGoogleLogin } from '@/server/repositories/admin-login-records-repository';
 
 function allowedEmails() {
   return (process.env.AUTH_ALLOWED_EMAILS ?? '')
@@ -24,11 +25,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!email) return false;
 
       const emails = allowedEmails();
-      if (emails.length > 0) return emails.includes(email);
+      if (emails.length > 0 && !emails.includes(email)) return false;
 
       const domain = allowedDomain();
-      if (domain) return email.endsWith(`@${domain}`);
+      if (domain && !email.endsWith(`@${domain}`)) return false;
 
+      await recordGoogleLogin({
+        name: typeof profile?.name === 'string' ? profile.name : null,
+        email,
+      });
       return true;
     },
   },
