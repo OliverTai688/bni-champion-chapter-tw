@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ClipboardList, ExternalLink, FileText, Vote } from 'lucide-react';
+import { AlertTriangle, ClipboardList, ExternalLink, FileText, Vote } from 'lucide-react';
 import { AuthButton } from '@/components/auth-button';
 import { SeatMapCreatePanel } from '@/components/seat-map-create-panel';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -11,14 +11,54 @@ export const metadata = {
   description: '管理多個活動日期的座位表',
 };
 
+const SEATING_INDEX_DATA_TIMEOUT_MS = 6000;
+
+type SeatingIndexState = {
+  sessions: Awaited<ReturnType<typeof listAdminEventSessions>>;
+  templates: Awaited<ReturnType<typeof listSeatTemplates>>;
+  databaseStatus: 'ready' | 'timeout' | 'error';
+};
+
+async function loadSeatingIndexState(): Promise<SeatingIndexState> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const dataPromise = Promise.all([listAdminEventSessions(), listSeatTemplates()])
+    .then(([sessions, templates]) => ({
+      sessions,
+      templates,
+      databaseStatus: 'ready' as const,
+    }))
+    .catch((error) => {
+      console.error('[seats] failed to load seating index data', error);
+      return {
+        sessions: [],
+        templates: [],
+        databaseStatus: 'error' as const,
+      };
+    });
+
+  const timeoutPromise = new Promise<SeatingIndexState>((resolve) => {
+    timeoutId = setTimeout(() => {
+      console.error(`[seats] seating index data load timed out after ${SEATING_INDEX_DATA_TIMEOUT_MS}ms`);
+      resolve({
+        sessions: [],
+        templates: [],
+        databaseStatus: 'timeout',
+      });
+    }, SEATING_INDEX_DATA_TIMEOUT_MS);
+  });
+
+  const state = await Promise.race([dataPromise, timeoutPromise]);
+  if (timeoutId) clearTimeout(timeoutId);
+  return state;
+}
+
 export default async function SeatingIndexPage(props: PageProps<'/seats'>) {
   const searchParams = await props.searchParams;
   if (typeof searchParams.weekId === 'string' && searchParams.weekId) {
     redirect(`/seats/${encodeURIComponent(searchParams.weekId)}`);
   }
 
-  const sessions = await listAdminEventSessions();
-  const templates = await listSeatTemplates();
+  const { sessions, templates, databaseStatus } = await loadSeatingIndexState();
   const totalSeats = sessions.reduce((sum, session) => sum + (session.latestSeatMap?.seatCount ?? 0), 0);
   const totalAssigned = sessions.reduce((sum, session) => sum + (session.latestSeatMap?.assignmentCount ?? 0), 0);
   const openPollCount = sessions.reduce((sum, session) => sum + session.openPollCount, 0);
@@ -39,6 +79,19 @@ export default async function SeatingIndexPage(props: PageProps<'/seats'>) {
             <ThemeToggle />
           </div>
         </header>
+
+        {databaseStatus !== 'ready' ? (
+          <div className="mb-6 flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <div className="font-black">部署環境暫時無法載入座位資料</div>
+              <p className="mt-1 text-xs leading-5">
+                請檢查 Vercel 環境變數 DATABASE_URL、MongoDB Atlas Network Access，以及 production 資料庫是否已執行 prisma db push。
+                頁面已先以空清單載入，避免公開部署整頁失敗。
+              </p>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mb-6 grid gap-3 md:grid-cols-3">
           <Metric label="活動日期" value={sessions.length} />
