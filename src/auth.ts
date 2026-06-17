@@ -2,6 +2,9 @@ import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
 import { recordGoogleLogin } from '@/server/repositories/admin-login-records-repository';
 
+const BUILT_IN_OWNER_EMAILS = ['taioliver688@gmail.com'];
+const LOGIN_RECORD_TIMEOUT_MS = 2500;
+
 function allowedEmails() {
   return (process.env.AUTH_ALLOWED_EMAILS ?? '')
     .split(',')
@@ -9,8 +12,43 @@ function allowedEmails() {
     .filter(Boolean);
 }
 
-function allowedDomain() {
-  return process.env.AUTH_ALLOWED_DOMAIN?.trim().toLowerCase();
+function allowedDomains() {
+  return (process.env.AUTH_ALLOWED_DOMAIN ?? '')
+    .split(',')
+    .map((domain) => domain.trim().toLowerCase().replace(/^@/, ''))
+    .filter(Boolean);
+}
+
+function isAllowedEmail(email: string) {
+  if (BUILT_IN_OWNER_EMAILS.includes(email)) return true;
+
+  const emails = allowedEmails();
+  const domains = allowedDomains();
+  if (domains.length === 0 && emails.length === 0) return true;
+  if (emails.includes(email)) return true;
+
+  return domains.some((domain) => email.endsWith(`@${domain}`));
+}
+
+async function recordGoogleLoginSafely(user: { name?: string | null; email?: string | null }) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timeoutId = setTimeout(() => {
+      console.error(`[auth] google login record timed out after ${LOGIN_RECORD_TIMEOUT_MS}ms`);
+      resolve();
+    }, LOGIN_RECORD_TIMEOUT_MS);
+  });
+
+  try {
+    await Promise.race([
+      recordGoogleLogin(user),
+      timeout,
+    ]);
+  } catch (error) {
+    console.error('[auth] failed to record google login', error);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -24,13 +62,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const email = profile?.email?.toLowerCase();
       if (!email) return false;
 
-      const emails = allowedEmails();
-      if (emails.length > 0 && !emails.includes(email)) return false;
+      if (!isAllowedEmail(email)) return false;
 
-      const domain = allowedDomain();
-      if (domain && !email.endsWith(`@${domain}`)) return false;
-
-      await recordGoogleLogin({
+      await recordGoogleLoginSafely({
         name: typeof profile?.name === 'string' ? profile.name : null,
         email,
       });
