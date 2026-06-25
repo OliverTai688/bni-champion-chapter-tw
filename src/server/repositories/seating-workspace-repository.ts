@@ -74,7 +74,17 @@ function toJsonValue(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
-export async function saveSeatingDraft(draft: NormalizedSeatingDraft) {
+export async function saveSeatingDraft(
+  draft: NormalizedSeatingDraft,
+  options?: { registrationMode?: boolean },
+) {
+  // Only touch the session metadata when the caller explicitly sets the mode, so
+  // routine editor saves never clobber a previously chosen registration flag.
+  const sessionMetadata =
+    options?.registrationMode === undefined
+      ? undefined
+      : { savedFrom: 'seating-workspace', registrationMode: options.registrationMode };
+
   const session = await prisma.meetingSession.upsert({
     where: { weekId: draft.week.id },
     create: {
@@ -86,9 +96,7 @@ export async function saveSeatingDraft(draft: NormalizedSeatingDraft) {
       source: draft.week.source,
       status: 'draft',
       publicSlug: draftPublicSlug(draft.week.id),
-      metadata: {
-        savedFrom: 'seating-workspace',
-      },
+      metadata: sessionMetadata ?? { savedFrom: 'seating-workspace' },
     },
     update: {
       date: new Date(draft.week.date),
@@ -96,6 +104,7 @@ export async function saveSeatingDraft(draft: NormalizedSeatingDraft) {
       chapterName: draft.week.chapterName,
       meetingLabel: draft.week.meetingLabel,
       source: draft.week.source,
+      ...(sessionMetadata ? { metadata: sessionMetadata } : {}),
     },
   });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, Circle, MoveHorizontal } from 'lucide-react';
+import { CheckCircle2, Circle, Minus, MoveHorizontal, Plus } from 'lucide-react';
 import type { PublicPollDTO, PublicSeatDTO } from '@/application/events/dto';
 
 export function PublicSeatMap({
@@ -10,8 +10,10 @@ export function PublicSeatMap({
   selectedOptionId,
   onSelectOption,
   attendanceEnabled = false,
+  registrationMode = false,
   pendingSeatIds,
   onAttendanceChange,
+  onHeadcountChange,
 }: {
   seats: PublicSeatDTO[];
   columns: number;
@@ -19,8 +21,10 @@ export function PublicSeatMap({
   selectedOptionId?: string | null;
   onSelectOption?: (optionId: string) => void;
   attendanceEnabled?: boolean;
+  registrationMode?: boolean;
   pendingSeatIds?: ReadonlySet<string>;
   onAttendanceChange?: (seatId: string, checkedIn: boolean) => void;
+  onHeadcountChange?: (seatId: string, headcount: number) => void;
 }) {
   const topSeats = seats.filter((seat) => seat.zone === 'top').sort((a, b) => a.position - b.position);
   const mainSeats = seats.filter((seat) => seat.zone !== 'top').sort((a, b) => a.position - b.position);
@@ -62,8 +66,10 @@ export function PublicSeatMap({
                   clickable={clickable && Boolean(seat.pollOptionId)}
                   onClick={seat.pollOptionId && onSelectOption ? () => onSelectOption(seat.pollOptionId ?? '') : undefined}
                   attendanceEnabled={attendanceEnabled}
+                  registrationMode={registrationMode}
                   updating={pendingSeatIds?.has(seat.id) ?? false}
                   onAttendanceChange={onAttendanceChange}
+                  onHeadcountChange={onHeadcountChange}
                 />
               ))}
             </div>
@@ -78,8 +84,10 @@ export function PublicSeatMap({
                 clickable={clickable && Boolean(seat.pollOptionId)}
                 onClick={seat.pollOptionId && onSelectOption ? () => onSelectOption(seat.pollOptionId ?? '') : undefined}
                 attendanceEnabled={attendanceEnabled}
+                registrationMode={registrationMode}
                 updating={pendingSeatIds?.has(seat.id) ?? false}
                 onAttendanceChange={onAttendanceChange}
+                onHeadcountChange={onHeadcountChange}
               />
             ))}
           </div>
@@ -119,19 +127,25 @@ function SeatTile({
   clickable,
   onClick,
   attendanceEnabled,
+  registrationMode,
   updating,
   onAttendanceChange,
+  onHeadcountChange,
 }: {
   seat: PublicSeatDTO;
   selected: boolean;
   clickable: boolean;
   onClick?: () => void;
   attendanceEnabled: boolean;
+  registrationMode: boolean;
   updating: boolean;
   onAttendanceChange?: (seatId: string, checkedIn: boolean) => void;
+  onHeadcountChange?: (seatId: string, headcount: number) => void;
 }) {
   const occupied = Boolean(seat.occupantName);
   const checkedIn = seat.attendanceStatus === 'checked_in';
+  const showHeadcount = registrationMode && occupied && checkedIn && Boolean(onHeadcountChange);
+  const headcount = Math.max(1, seat.headcount);
   const content = (
     <>
       <div className="flex items-center justify-between gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground/35">
@@ -167,6 +181,38 @@ function SeatTile({
         >
           {updating ? '更新中' : checkedIn ? '取消抵達' : '抵達'}
         </button>
+      ) : null}
+      {showHeadcount && onHeadcountChange ? (
+        <div className="mt-2 flex items-center justify-between gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] px-1.5 py-1">
+          <span className="pl-0.5 text-[10px] font-black text-emerald-700/80 dark:text-emerald-300/80">攜伴</span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="減少人數"
+              onClick={(event) => {
+                event.stopPropagation();
+                onHeadcountChange(seat.id, headcount - 1);
+              }}
+              disabled={updating || headcount <= 1}
+              className="inline-flex h-6 w-6 items-center justify-center rounded border border-emerald-500/25 bg-background text-emerald-700 disabled:opacity-40 dark:text-emerald-300"
+            >
+              <Minus className="h-3 w-3" />
+            </button>
+            <span className="min-w-[2.5rem] text-center text-xs font-black tabular-nums">{headcount} 人</span>
+            <button
+              type="button"
+              aria-label="增加人數"
+              onClick={(event) => {
+                event.stopPropagation();
+                onHeadcountChange(seat.id, headcount + 1);
+              }}
+              disabled={updating}
+              className="inline-flex h-6 w-6 items-center justify-center rounded border border-emerald-500/25 bg-background text-emerald-700 disabled:opacity-40 dark:text-emerald-300"
+            >
+              <Plus className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
       ) : null}
     </>
   );

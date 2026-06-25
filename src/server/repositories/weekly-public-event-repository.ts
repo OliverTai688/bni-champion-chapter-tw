@@ -32,6 +32,7 @@ export async function findPublicWeeklyEventBySlug(slug: string) {
                   displayName: true,
                   role: true,
                   status: true,
+                  headcount: true,
                 },
               },
             },
@@ -39,6 +40,7 @@ export async function findPublicWeeklyEventBySlug(slug: string) {
           assignments: {
             select: {
               status: true,
+              headcount: true,
             },
           },
         },
@@ -75,10 +77,18 @@ export async function findPublicWeeklyEventBySlug(slug: string) {
   });
 }
 
+// Clamp party size to a sane range so a malformed public request can't store
+// negative or absurd headcounts.
+function clampHeadcount(value: number | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1;
+  return Math.max(1, Math.min(50, Math.round(value)));
+}
+
 export async function updatePublicSeatAttendance(input: {
   slug: string;
   seatId: string;
   checkedIn: boolean;
+  headcount?: number;
 }) {
   const session = await prisma.meetingSession.findFirst({
     where: {
@@ -118,6 +128,8 @@ export async function updatePublicSeatAttendance(input: {
     },
     data: {
       status: input.checkedIn ? 'checked_in' : 'assigned',
+      // Party size only applies while checked in; reset to 1 on un-check.
+      headcount: input.checkedIn ? clampHeadcount(input.headcount) : 1,
     },
   });
 
@@ -136,6 +148,7 @@ export async function updatePublicSeatAttendance(input: {
       metadata: {
         seatId: seat.id,
         checkedIn: input.checkedIn,
+        headcount: input.checkedIn ? clampHeadcount(input.headcount) : 1,
       },
     },
   });

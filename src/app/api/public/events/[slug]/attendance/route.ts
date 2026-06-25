@@ -6,9 +6,10 @@ export async function PATCH(request: Request, context: RouteContext<'/api/public
   const body = await request.json().catch(() => null);
   const seatId = typeof body?.seatId === 'string' ? body.seatId : '';
   const checkedIn = body?.checkedIn === true;
+  const headcount = typeof body?.headcount === 'number' ? body.headcount : undefined;
 
   try {
-    const event = await updatePublicSeatAttendance({ slug, seatId, checkedIn });
+    const event = await updatePublicSeatAttendance({ slug, seatId, checkedIn, headcount });
     if (!event) {
       return Response.json(
         {

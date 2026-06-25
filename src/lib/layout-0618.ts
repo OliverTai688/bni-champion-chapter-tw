@@ -29,7 +29,7 @@ export const ROSTER_0618: Roster = {
 
   members: [
     '洪宗宏', '黃佳琪', '吳振綱', '郭子郁', 
-    '梁文齡', '黃柔涵', '王致崴', '王建豐', 
+    '梁文齡', '王致崴', '王建豐', 
     '林子晏', '林道元', '陳宜均', '劉庭羽', 
     '黃嘉琪', '葉心琳', '王柏詠', '陳泓睿', 
     '簡偉志', '黎士銓', '陳志誠', '陳俊鳴', 
@@ -38,7 +38,7 @@ export const ROSTER_0618: Roster = {
     '邱柏瀚', '田謦蓉', '邱孟婷', '戴宇星',
   ],
 
-  proxies: [],
+  proxies: ['黃柔涵'],
 
   industryChains: [],
 
@@ -86,7 +86,7 @@ export const LAYOUT_0618: SeatingLayout = {
       { id: 'g-4-3', name: '梁文齡', isGuest: false },
     ],
     [
-      { id: 'g-5-0', name: '黃柔涵', isGuest: false },
+      { id: 'g-5-0', name: '黃柔涵', isGuest: false, role: '代理' },
       { id: 'g-5-1', name: '王致崴', isGuest: false },
       { id: 'g-5-2', name: '王建豐', isGuest: false },
       { id: 'g-5-3', name: '林子晏', isGuest: false },

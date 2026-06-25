@@ -7,18 +7,30 @@ import { PublicSeatMap } from '@/components/public-seat-map';
 
 // Recompute the summary/zone counters locally so optimistic toggles update the
 // whole panel instantly; the 5s poll later reconciles with the server truth.
-function applyAttendance(event: PublicWeeklyEventDTO, seatId: string, checkedIn: boolean): PublicWeeklyEventDTO {
-  const seats = event.seatMap.seats.map((seat) =>
-    seat.id === seatId ? { ...seat, attendanceStatus: checkedIn ? 'checked_in' : 'assigned' } : seat,
-  );
-  const checkedInCount = seats.filter((seat) => seat.attendanceStatus === 'checked_in').length;
+function applyAttendance(
+  event: PublicWeeklyEventDTO,
+  seatId: string,
+  checkedIn: boolean,
+  headcount?: number,
+): PublicWeeklyEventDTO {
+  const seats = event.seatMap.seats.map((seat) => {
+    if (seat.id !== seatId) return seat;
+    // Party size only applies while checked in; reset to 1 on un-check.
+    const nextHeadcount = checkedIn ? Math.max(1, headcount ?? seat.headcount) : 1;
+    return { ...seat, attendanceStatus: checkedIn ? 'checked_in' : 'assigned', headcount: nextHeadcount };
+  });
+  const checkedInSeats = seats.filter((seat) => seat.attendanceStatus === 'checked_in');
 
   return {
     ...event,
-    seatSummary: { ...event.seatSummary, checkedInCount },
+    seatSummary: {
+      ...event.seatSummary,
+      checkedInCount: checkedInSeats.length,
+      totalHeadcount: checkedInSeats.reduce((sum, seat) => sum + Math.max(1, seat.headcount), 0),
+    },
     occupancyByZone: event.occupancyByZone.map((zone) => ({
       ...zone,
-      checkedInCount: seats.filter((seat) => seat.zone === zone.zone && seat.attendanceStatus === 'checked_in').length,
+      checkedInCount: checkedInSeats.filter((seat) => seat.zone === zone.zone).length,
     })),
     seatMap: { ...event.seatMap, seats },
   };
@@ -63,11 +75,13 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
     return () => window.clearTimeout(timer);
   }, [message]);
 
-  async function updateAttendance(seatId: string, checkedIn: boolean) {
-    const previousStatus = event.seatMap.seats.find((seat) => seat.id === seatId)?.attendanceStatus ?? 'assigned';
+  async function updateAttendance(seatId: string, checkedIn: boolean, headcount?: number) {
+    const previousSeat = event.seatMap.seats.find((seat) => seat.id === seatId);
+    const previousStatus = previousSeat?.attendanceStatus ?? 'assigned';
+    const previousHeadcount = previousSeat?.headcount ?? 1;
 
     // Optimistic: flip the seat and counters immediately.
-    setEvent((current) => applyAttendance(current, seatId, checkedIn));
+    setEvent((current) => applyAttendance(current, seatId, checkedIn, headcount));
     setPendingSeatIds((current) => new Set(current).add(seatId));
     setMessage(null);
 
@@ -75,15 +89,17 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
       const response = await fetch(`/api/public/events/${event.slug}/attendance`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seatId, checkedIn }),
+        body: JSON.stringify({ seatId, checkedIn, headcount }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data?.message ?? '更新抵達狀態失敗。');
 
-      setMessage({ text: checkedIn ? '已標記抵達。' : '已取消抵達。', tone: 'ok' });
+      setMessage({ text: checkedIn ? '已更新報名。' : '已取消抵達。', tone: 'ok' });
     } catch (error) {
-      // Roll back just this seat.
-      setEvent((current) => applyAttendance(current, seatId, previousStatus === 'checked_in'));
+      // Roll back just this seat to its previous status and party size.
+      setEvent((current) =>
+        applyAttendance(current, seatId, previousStatus === 'checked_in', previousHeadcount),
+      );
       setMessage({ text: error instanceof Error ? error.message : '更新抵達狀態失敗。', tone: 'error' });
     } finally {
       setPendingSeatIds((current) => {
@@ -92,6 +108,11 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
         return next;
       });
     }
+  }
+
+  function changeHeadcount(seatId: string, headcount: number) {
+    // Adjusting party size keeps the seat checked in; clamp to a sane minimum.
+    updateAttendance(seatId, true, Math.max(1, headcount));
   }
 
   return (
@@ -114,6 +135,18 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
             <Stat label="已安排" value={event.seatSummary.occupiedSeats} />
             <Stat label="已抵達" value={event.seatSummary.checkedInCount} accent />
           </div>
+
+          {event.registrationMode ? (
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-emerald-500/10 px-4 py-3">
+              <div>
+                <div className="text-xs font-bold text-foreground/45">報名總人數（含攜伴）</div>
+                <div className="mt-0.5 text-[11px] font-medium text-foreground/40">已抵達 {event.seatSummary.checkedInCount} 席 · 含本人與朋友</div>
+              </div>
+              <div className="text-3xl font-black tabular-nums text-emerald-700 dark:text-emerald-300">
+                {event.seatSummary.totalHeadcount}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-4">
             <div className="mb-1.5 flex items-center justify-between text-xs font-bold text-foreground/50">
@@ -161,8 +194,10 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
           columns={event.seatMap.columns}
           activePoll={openPoll}
           attendanceEnabled
+          registrationMode={event.registrationMode}
           pendingSeatIds={pendingSeatIds}
           onAttendanceChange={updateAttendance}
+          onHeadcountChange={changeHeadcount}
         />
       </div>
 

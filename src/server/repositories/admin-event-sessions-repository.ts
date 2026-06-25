@@ -189,6 +189,7 @@ export async function createEventSeatMap(input: {
   sourceWeekId?: string;
   sourceTemplateId?: string;
   confirmOverwrite?: boolean;
+  registrationMode?: boolean;
 }) {
   const targetDate = isoDateOnly(input.targetDate);
   const existing = await prisma.meetingSession.findUnique({
@@ -221,12 +222,15 @@ export async function createEventSeatMap(input: {
     source: 'generated',
   };
 
-  const saveResult = await saveSeatingDraft({
-    ...sourceDraft,
-    week: targetWeek,
-    updatedAt: new Date().toISOString(),
-    reason: `Created from ${sourceDraft.week.id} via ${input.sourceKind}.`,
-  });
+  const saveResult = await saveSeatingDraft(
+    {
+      ...sourceDraft,
+      week: targetWeek,
+      updatedAt: new Date().toISOString(),
+      reason: `Created from ${sourceDraft.week.id} via ${input.sourceKind}.`,
+    },
+    { registrationMode: Boolean(input.registrationMode) },
+  );
   const session = await prisma.meetingSession.findUnique({
     where: { weekId: targetWeek.id },
     select: { id: true },
@@ -246,6 +250,7 @@ export async function createEventSeatMap(input: {
         sourceWeekId: input.sourceWeekId ?? sourceDraft.week.id,
         sourceTemplateId: input.sourceTemplateId,
         confirmedOverwrite: Boolean(input.confirmOverwrite),
+        registrationMode: Boolean(input.registrationMode),
         seatMapId: saveResult.seatMapId,
         version: saveResult.version,
       },

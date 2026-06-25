@@ -48,6 +48,7 @@ export async function POST(request: Request) {
       sourceWeekId: typeof body?.sourceWeekId === 'string' ? body.sourceWeekId : undefined,
       sourceTemplateId: typeof body?.sourceTemplateId === 'string' ? body.sourceTemplateId : undefined,
       confirmOverwrite: body?.confirmOverwrite === true,
+      registrationMode: body?.registrationMode === true,
     });
 
     if (result.conflict) {

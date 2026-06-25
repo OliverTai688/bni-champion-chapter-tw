@@ -7,6 +7,9 @@ export interface PublicWeeklyEventDTO {
   date: string;
   status: string;
   publicStatus: string;
+  // When true this event runs as a guest-headcount registration page: each
+  // checked-in seat carries a party size and the public summary shows a total.
+  registrationMode: boolean;
   seatSummary: {
     totalSeats: number;
     occupiedSeats: number;
@@ -14,6 +17,8 @@ export interface PublicWeeklyEventDTO {
     assignedCount: number;
     checkedInCount: number;
     capacity: number;
+    // Sum of party sizes (本人 + 朋友) across checked-in seats only.
+    totalHeadcount: number;
   };
   occupancyByZone: Array<{
     zone: string;
@@ -41,6 +46,8 @@ export interface PublicSeatDTO {
   occupantName: string | null;
   role: string | null;
   attendanceStatus: string | null;
+  // Party size for this seat (本人 + 朋友); always >= 1, only meaningful when checked in.
+  headcount: number;
   pollOptionId: string | null;
 }
 

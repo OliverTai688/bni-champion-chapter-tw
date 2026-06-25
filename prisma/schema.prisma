@@ -213,6 +213,7 @@ model SeatAssignment {
   guestNumber String?
   hostFor     String?
   status      SeatAssignmentStatus @default(assigned)
+  headcount   Int                  @default(1)
   source      String               @default("seed")
   metadata    Json?
   createdAt   DateTime             @default(now())

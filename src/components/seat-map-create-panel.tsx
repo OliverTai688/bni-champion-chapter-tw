@@ -39,6 +39,7 @@ export function SeatMapCreatePanel({
   const [sourceKind, setSourceKind] = useState<SourceKind>(templates[0] ? 'named_template' : 'latest_event');
   const [sourceWeekId, setSourceWeekId] = useState(sessions[0]?.weekId ?? '');
   const [sourceTemplateId, setSourceTemplateId] = useState(templates[0]?.id ?? '');
+  const [registrationMode, setRegistrationMode] = useState(false);
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -64,6 +65,7 @@ export function SeatMapCreatePanel({
         sourceWeekId: sourceKind === 'selected_event' ? sourceWeekId : undefined,
         sourceTemplateId: sourceKind === 'named_template' ? sourceTemplateId : undefined,
         confirmOverwrite,
+        registrationMode,
       }),
     });
     const data = await response.json();
@@ -197,6 +199,21 @@ export function SeatMapCreatePanel({
           </span>
         )}
       </div>
+
+      <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-md border border-foreground/10 bg-background/60 px-4 py-3">
+        <input
+          type="checkbox"
+          checked={registrationMode}
+          onChange={(event) => setRegistrationMode(event.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-emerald-600"
+        />
+        <span className="text-sm">
+          <span className="font-black">來賓統計活動（攜伴人數）</span>
+          <span className="mt-0.5 block text-foreground/55">
+            公開頁會顯示「報名總人數」，每位到場成員可登記本人＋朋友的人數。不勾選則維持一般排座與報到。
+          </span>
+        </span>
+      </label>
 
       {conflict ? (
         <div className="mt-3 flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-200">

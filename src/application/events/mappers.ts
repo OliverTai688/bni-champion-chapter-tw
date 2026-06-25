@@ -15,6 +15,7 @@ type PublicSeatRecord = {
     displayName: string;
     role: string | null;
     status: string;
+    headcount: number;
   }>;
 };
 
@@ -23,6 +24,7 @@ type PublicSeatMapRecord = {
   seats: PublicSeatRecord[];
   assignments: Array<{
     status: string;
+    headcount: number;
   }>;
 };
 
@@ -57,6 +59,7 @@ type PublicWeeklyEventRecord = {
   date: Date;
   status: string;
   publicStatus: string;
+  metadata: unknown;
   updatedAt: Date;
   seatMaps: PublicSeatMapRecord[];
   livePolls: PublicPollRecord[];
@@ -71,20 +74,29 @@ function buildSeatSummary(seatMap: PublicSeatMapRecord | undefined): PublicWeekl
       assignedCount: 0,
       checkedInCount: 0,
       capacity: 0,
+      totalHeadcount: 0,
     };
   }
 
   const totalSeats = seatMap.seats.length;
   const occupiedSeats = seatMap.seats.filter((seat) => seat.assignments.length > 0).length;
+  const checkedIn = seatMap.assignments.filter((assignment) => assignment.status === 'checked_in');
 
   return {
     totalSeats,
     occupiedSeats,
     emptySeats: totalSeats - occupiedSeats,
     assignedCount: seatMap.assignments.filter((assignment) => assignment.status === 'assigned').length,
-    checkedInCount: seatMap.assignments.filter((assignment) => assignment.status === 'checked_in').length,
+    checkedInCount: checkedIn.length,
     capacity: seatMap.seats.reduce((sum, seat) => sum + seat.capacity, 0),
+    // Total people = sum of party sizes (本人 + 朋友) over checked-in seats only.
+    totalHeadcount: checkedIn.reduce((sum, assignment) => sum + normalizeHeadcount(assignment.headcount), 0),
   };
+}
+
+function normalizeHeadcount(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 1;
+  return Math.max(1, Math.round(value));
 }
 
 function buildOccupancyByZone(seatMap: PublicSeatMapRecord | undefined): PublicWeeklyEventDTO['occupancyByZone'] {
@@ -112,6 +124,11 @@ function readMetadataString(metadata: unknown, key: string) {
   if (!metadata || typeof metadata !== 'object') return null;
   const value = (metadata as Record<string, unknown>)[key];
   return typeof value === 'string' ? value : null;
+}
+
+function readMetadataBoolean(metadata: unknown, key: string) {
+  if (!metadata || typeof metadata !== 'object') return false;
+  return (metadata as Record<string, unknown>)[key] === true;
 }
 
 // A poll option is created against a person (memberId) and frozen with the
@@ -159,6 +176,7 @@ function buildSeatMap(record: PublicWeeklyEventRecord, seatMap: PublicSeatMapRec
         occupantName: assignment?.displayName ?? null,
         role: assignment?.role ?? null,
         attendanceStatus: assignment?.status ?? null,
+        headcount: normalizeHeadcount(assignment?.headcount),
         pollOptionId:
           (assignment?.memberId ? byMember.get(assignment.memberId) : null) ??
           bySeatKey.get(seat.seatKey) ??
@@ -217,6 +235,7 @@ export function toPublicWeeklyEventDTO(record: PublicWeeklyEventRecord): PublicW
     date: record.date.toISOString(),
     status: record.status,
     publicStatus: record.publicStatus,
+    registrationMode: readMetadataBoolean(record.metadata, 'registrationMode'),
     seatSummary: buildSeatSummary(seatMap),
     occupancyByZone: buildOccupancyByZone(seatMap),
     seatMap: buildSeatMap(record, seatMap),
