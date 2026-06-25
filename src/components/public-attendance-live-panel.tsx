@@ -47,6 +47,25 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
     pendingRef.current = pendingSeatIds;
   }, [pendingSeatIds]);
 
+  // Latest event snapshot for debounced writers that fire outside React's render.
+  const eventRef = useRef(event);
+  useEffect(() => {
+    eventRef.current = event;
+  }, [event]);
+
+  // Per-seat debounce timers + the set of seats with unsynced local edits. While
+  // any seat is dirty the poll pauses so it can't revert an in-progress change.
+  const headcountTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const dirtySeats = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const timers = headcountTimers.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
   const openPoll = useMemo(() => event.polls.find((poll) => poll.status === 'open') ?? null, [event.polls]);
   const manageSeat = manageSeatId ? event.seatMap.seats.find((seat) => seat.id === manageSeatId) ?? null : null;
   const checkedInRate = event.seatSummary.occupiedSeats > 0
@@ -55,15 +74,16 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      // Skip while a toggle is in flight so the poll never reverts an optimistic change.
-      if (pendingRef.current.size > 0) return;
+      // Skip while a toggle is in flight or a seat has an unsynced edit, so the
+      // poll never reverts an optimistic change.
+      if (pendingRef.current.size > 0 || dirtySeats.current.size > 0) return;
       void fetch(`/api/public/events/${event.slug}`, { cache: 'no-store' })
         .then((response) => {
           if (!response.ok) throw new Error('讀取公開頁狀態失敗。');
           return response.json() as Promise<PublicWeeklyEventDTO>;
         })
         .then((next) => {
-          if (pendingRef.current.size === 0) setEvent(next);
+          if (pendingRef.current.size === 0 && dirtySeats.current.size === 0) setEvent(next);
         })
         .catch(() => {});
     }, 5000);
@@ -112,9 +132,50 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
     }
   }
 
+  // Push the latest party size for a seat to the server. Reads the freshest
+  // optimistic value at fire time so coalesced taps send only the final count.
+  async function flushHeadcount(seatId: string) {
+    const seat = eventRef.current.seatMap.seats.find((item) => item.id === seatId);
+    if (!seat || seat.attendanceStatus !== 'checked_in') {
+      dirtySeats.current.delete(seatId);
+      return;
+    }
+    const headcount = Math.max(1, seat.headcount);
+    try {
+      const response = await fetch(`/api/public/events/${eventRef.current.slug}/attendance`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seatId, checkedIn: true, headcount }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message ?? '更新人數失敗。');
+      }
+    } catch (error) {
+      setMessage({ text: error instanceof Error ? error.message : '更新人數失敗。', tone: 'error' });
+    } finally {
+      // Keep the seat dirty if another tap already queued a newer write; otherwise
+      // release it so the poll can resume reconciling.
+      if (!headcountTimers.current.has(seatId)) dirtySeats.current.delete(seatId);
+    }
+  }
+
   function changeHeadcount(seatId: string, headcount: number) {
-    // Adjusting party size keeps the seat checked in; clamp to a sane minimum.
-    updateAttendance(seatId, true, Math.max(1, headcount));
+    const next = Math.max(1, headcount);
+    // Instant optimistic update — never blocks on the network.
+    setEvent((current) => applyAttendance(current, seatId, true, next));
+    dirtySeats.current.add(seatId);
+
+    // Debounce the write so a burst of +/- taps coalesces into one request.
+    const existing = headcountTimers.current.get(seatId);
+    if (existing) clearTimeout(existing);
+    headcountTimers.current.set(
+      seatId,
+      setTimeout(() => {
+        headcountTimers.current.delete(seatId);
+        void flushHeadcount(seatId);
+      }, 500),
+    );
   }
 
   return (
