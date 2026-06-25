@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, Circle, Minus, MoveHorizontal, Plus } from 'lucide-react';
+import { CheckCircle2, Circle, MoveHorizontal, Settings2, UserRound } from 'lucide-react';
 import type { PublicPollDTO, PublicSeatDTO } from '@/application/events/dto';
 
 export function PublicSeatMap({
@@ -13,7 +13,7 @@ export function PublicSeatMap({
   registrationMode = false,
   pendingSeatIds,
   onAttendanceChange,
-  onHeadcountChange,
+  onManageSeat,
 }: {
   seats: PublicSeatDTO[];
   columns: number;
@@ -24,7 +24,7 @@ export function PublicSeatMap({
   registrationMode?: boolean;
   pendingSeatIds?: ReadonlySet<string>;
   onAttendanceChange?: (seatId: string, checkedIn: boolean) => void;
-  onHeadcountChange?: (seatId: string, headcount: number) => void;
+  onManageSeat?: (seatId: string) => void;
 }) {
   const topSeats = seats.filter((seat) => seat.zone === 'top').sort((a, b) => a.position - b.position);
   const mainSeats = seats.filter((seat) => seat.zone !== 'top').sort((a, b) => a.position - b.position);
@@ -69,7 +69,7 @@ export function PublicSeatMap({
                   registrationMode={registrationMode}
                   updating={pendingSeatIds?.has(seat.id) ?? false}
                   onAttendanceChange={onAttendanceChange}
-                  onHeadcountChange={onHeadcountChange}
+                  onManageSeat={onManageSeat}
                 />
               ))}
             </div>
@@ -87,7 +87,7 @@ export function PublicSeatMap({
                 registrationMode={registrationMode}
                 updating={pendingSeatIds?.has(seat.id) ?? false}
                 onAttendanceChange={onAttendanceChange}
-                onHeadcountChange={onHeadcountChange}
+                onManageSeat={onManageSeat}
               />
             ))}
           </div>
@@ -130,7 +130,7 @@ function SeatTile({
   registrationMode,
   updating,
   onAttendanceChange,
-  onHeadcountChange,
+  onManageSeat,
 }: {
   seat: PublicSeatDTO;
   selected: boolean;
@@ -140,11 +140,10 @@ function SeatTile({
   registrationMode: boolean;
   updating: boolean;
   onAttendanceChange?: (seatId: string, checkedIn: boolean) => void;
-  onHeadcountChange?: (seatId: string, headcount: number) => void;
+  onManageSeat?: (seatId: string) => void;
 }) {
   const occupied = Boolean(seat.occupantName);
   const checkedIn = seat.attendanceStatus === 'checked_in';
-  const showHeadcount = registrationMode && occupied && checkedIn && Boolean(onHeadcountChange);
   const headcount = Math.max(1, seat.headcount);
   const content = (
     <>
@@ -165,54 +164,59 @@ function SeatTile({
       <div className="mt-1 truncate text-[11px] font-medium text-foreground/45">
         {seat.role ?? seat.kind}
       </div>
-      {attendanceEnabled && occupied && onAttendanceChange ? (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAttendanceChange(seat.id, !checkedIn);
-          }}
-          disabled={updating}
-          className={`mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
-            checkedIn
-              ? 'border border-emerald-500/25 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300'
-              : 'bg-foreground text-background hover:opacity-90'
-          }`}
-        >
-          {updating ? '更新中' : checkedIn ? '取消抵達' : '抵達'}
-        </button>
-      ) : null}
-      {showHeadcount && onHeadcountChange ? (
-        <div className="mt-2 flex items-center justify-between gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/[0.06] px-1.5 py-1">
-          <span className="pl-0.5 text-[10px] font-black text-emerald-700/80 dark:text-emerald-300/80">攜伴</span>
-          <div className="flex items-center gap-1">
+      {attendanceEnabled && occupied ? (
+        registrationMode ? (
+          checkedIn ? (
+            <div className="mt-3 space-y-1.5">
+              <div className="flex items-center justify-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/[0.08] px-2 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
+                <UserRound className="h-3.5 w-3.5" />
+                共 {headcount} 人
+              </div>
+              {onManageSeat ? (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onManageSeat(seat.id);
+                  }}
+                  disabled={updating}
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-foreground/15 bg-background/80 px-2 py-2 text-xs font-black text-foreground/70 transition hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                  {updating ? '更新中' : '管理'}
+                </button>
+              ) : null}
+            </div>
+          ) : onAttendanceChange ? (
             <button
               type="button"
-              aria-label="減少人數"
               onClick={(event) => {
                 event.stopPropagation();
-                onHeadcountChange(seat.id, headcount - 1);
-              }}
-              disabled={updating || headcount <= 1}
-              className="inline-flex h-6 w-6 items-center justify-center rounded border border-emerald-500/25 bg-background text-emerald-700 disabled:opacity-40 dark:text-emerald-300"
-            >
-              <Minus className="h-3 w-3" />
-            </button>
-            <span className="min-w-[2.5rem] text-center text-xs font-black tabular-nums">{headcount} 人</span>
-            <button
-              type="button"
-              aria-label="增加人數"
-              onClick={(event) => {
-                event.stopPropagation();
-                onHeadcountChange(seat.id, headcount + 1);
+                onAttendanceChange(seat.id, true);
               }}
               disabled={updating}
-              className="inline-flex h-6 w-6 items-center justify-center rounded border border-emerald-500/25 bg-background text-emerald-700 disabled:opacity-40 dark:text-emerald-300"
+              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-foreground px-2 py-2 text-xs font-black text-background transition active:scale-[0.98] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Plus className="h-3 w-3" />
+              {updating ? '更新中' : '報到'}
             </button>
-          </div>
-        </div>
+          ) : null
+        ) : onAttendanceChange ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAttendanceChange(seat.id, !checkedIn);
+            }}
+            disabled={updating}
+            className={`mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
+              checkedIn
+                ? 'border border-emerald-500/25 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300'
+                : 'bg-foreground text-background hover:opacity-90'
+            }`}
+          >
+            {updating ? '更新中' : checkedIn ? '取消抵達' : '抵達'}
+          </button>
+        ) : null
       ) : null}
     </>
   );

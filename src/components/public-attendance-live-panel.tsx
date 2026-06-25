@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, UsersRound } from 'lucide-react';
-import type { PublicWeeklyEventDTO } from '@/application/events/dto';
+import { CheckCircle2, Minus, Plus, UsersRound, X } from 'lucide-react';
+import type { PublicSeatDTO, PublicWeeklyEventDTO } from '@/application/events/dto';
 import { PublicSeatMap } from '@/components/public-seat-map';
 
 // Recompute the summary/zone counters locally so optimistic toggles update the
@@ -39,6 +39,7 @@ function applyAttendance(
 export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: PublicWeeklyEventDTO }) {
   const [event, setEvent] = useState(initialEvent);
   const [pendingSeatIds, setPendingSeatIds] = useState<Set<string>>(() => new Set());
+  const [manageSeatId, setManageSeatId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
   const pendingRef = useRef(pendingSeatIds);
 
@@ -47,6 +48,7 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
   }, [pendingSeatIds]);
 
   const openPoll = useMemo(() => event.polls.find((poll) => poll.status === 'open') ?? null, [event.polls]);
+  const manageSeat = manageSeatId ? event.seatMap.seats.find((seat) => seat.id === manageSeatId) ?? null : null;
   const checkedInRate = event.seatSummary.occupiedSeats > 0
     ? Math.round((event.seatSummary.checkedInCount / event.seatSummary.occupiedSeats) * 100)
     : 0;
@@ -197,9 +199,22 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
           registrationMode={event.registrationMode}
           pendingSeatIds={pendingSeatIds}
           onAttendanceChange={updateAttendance}
-          onHeadcountChange={changeHeadcount}
+          onManageSeat={setManageSeatId}
         />
       </div>
+
+      {manageSeat && manageSeat.attendanceStatus === 'checked_in' ? (
+        <SeatManageDialog
+          seat={manageSeat}
+          updating={pendingSeatIds.has(manageSeat.id)}
+          onHeadcountChange={(headcount) => changeHeadcount(manageSeat.id, headcount)}
+          onCancelAttendance={() => {
+            updateAttendance(manageSeat.id, false);
+            setManageSeatId(null);
+          }}
+          onClose={() => setManageSeatId(null)}
+        />
+      ) : null}
 
       {message ? (
         <div
@@ -230,6 +245,124 @@ function Stat({ label, value, accent = false }: { label: string; value: number; 
     <div className={`rounded-xl p-3 ${accent ? 'bg-emerald-500/10' : 'bg-background/70'}`}>
       <div className={`text-2xl font-black tabular-nums ${accent ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>{value}</div>
       <div className="mt-1 text-xs font-bold text-foreground/45">{label}</div>
+    </div>
+  );
+}
+
+// Deliberate management popup so party-size changes and the destructive
+// cancel-attendance action can't be triggered by an accidental tap on the list.
+function SeatManageDialog({
+  seat,
+  updating,
+  onHeadcountChange,
+  onCancelAttendance,
+  onClose,
+}: {
+  seat: PublicSeatDTO;
+  updating: boolean;
+  onHeadcountChange: (headcount: number) => void;
+  onCancelAttendance: () => void;
+  onClose: () => void;
+}) {
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const headcount = Math.max(1, seat.headcount);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl border border-foreground/10 bg-background p-5 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/35">報名管理</div>
+            <h3 className="mt-1 text-lg font-black">{seat.occupantName}</h3>
+            <p className="text-xs font-medium text-foreground/45">{seat.role ?? seat.kind} · 已抵達</p>
+          </div>
+          <button
+            type="button"
+            aria-label="關閉"
+            onClick={onClose}
+            className="rounded-md p-1 text-foreground/40 transition hover:bg-foreground/5 hover:text-foreground/70"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-5 rounded-xl border border-foreground/10 bg-foreground/[0.03] p-4">
+          <div className="text-xs font-bold text-foreground/50">出席人數（本人＋朋友）</div>
+          <div className="mt-3 flex items-center justify-between">
+            <button
+              type="button"
+              aria-label="減少人數"
+              onClick={() => onHeadcountChange(headcount - 1)}
+              disabled={updating || headcount <= 1}
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-foreground/15 bg-background text-foreground transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Minus className="h-5 w-5" />
+            </button>
+            <div className="text-center">
+              <div className="text-4xl font-black tabular-nums">{headcount}</div>
+              <div className="text-xs font-bold text-foreground/40">人</div>
+            </div>
+            <button
+              type="button"
+              aria-label="增加人數"
+              onClick={() => onHeadcountChange(headcount + 1)}
+              disabled={updating}
+              className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:text-emerald-300"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          {confirmCancel ? (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3">
+              <p className="text-sm font-bold text-red-700 dark:text-red-300">確定要取消「{seat.occupantName}」的抵達？</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmCancel(false)}
+                  disabled={updating}
+                  className="rounded-md border border-foreground/15 px-3 py-2 text-sm font-black text-foreground/70 transition hover:bg-foreground/5 disabled:opacity-50"
+                >
+                  返回
+                </button>
+                <button
+                  type="button"
+                  onClick={onCancelAttendance}
+                  disabled={updating}
+                  className="rounded-md bg-red-600 px-3 py-2 text-sm font-black text-white transition hover:bg-red-700 disabled:opacity-50"
+                >
+                  確定取消抵達
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmCancel(true)}
+              disabled={updating}
+              className="w-full rounded-md border border-red-500/25 px-3 py-2.5 text-sm font-black text-red-600 transition hover:bg-red-500/5 disabled:opacity-50 dark:text-red-300"
+            >
+              取消抵達
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-3 w-full rounded-md bg-foreground px-3 py-2.5 text-sm font-black text-background transition hover:opacity-90"
+        >
+          完成
+        </button>
+      </div>
     </div>
   );
 }
