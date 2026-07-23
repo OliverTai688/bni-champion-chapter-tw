@@ -1,4 +1,6 @@
 import { auth } from '@/auth';
+import { cookies } from 'next/headers';
+import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
 import { toAdminSeatingWorkspaceDTO, toPublicSeatMapSummaryDTO } from '@/application/seating/mappers';
 import { normalizeSaveSeatingDraftRequest } from '@/application/seating/save-draft';
 import { findLatestSeatMapByWeekId, saveSeatingDraft } from '@/server/repositories/seating-workspace-repository';
@@ -7,10 +9,18 @@ function unauthorized() {
   return Response.json(
     {
       error: 'unauthorized',
-      message: 'Google sign-in is required for this operation.',
+      message: 'Google sign-in or admin access is required for this operation.',
     },
     { status: 401 },
   );
+}
+
+async function hasAdminAccess() {
+  const session = await auth();
+  if (session?.user) return true;
+
+  const cookieStore = await cookies();
+  return verifyAdminAccessToken(cookieStore.get(ADMIN_ACCESS_COOKIE)?.value);
 }
 
 export async function GET(request: Request, context: RouteContext<'/api/seats/[weekId]'>) {
@@ -19,8 +29,7 @@ export async function GET(request: Request, context: RouteContext<'/api/seats/[w
   const view = url.searchParams.get('view') === 'admin' ? 'admin' : 'public';
 
   if (view === 'admin') {
-    const session = await auth();
-    if (!session?.user) return unauthorized();
+    if (!(await hasAdminAccess())) return unauthorized();
   }
 
   const seatMap = await findLatestSeatMapByWeekId(weekId);

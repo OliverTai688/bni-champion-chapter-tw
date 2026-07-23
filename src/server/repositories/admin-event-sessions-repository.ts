@@ -49,19 +49,22 @@ function visiblePublicSlug(publicSlug: string | null, publicStatus: string) {
 }
 
 function toSeatDataFromSeat(seat: ReturnType<typeof toAdminSeatingWorkspaceDTO>['seats'][number]) {
-  if (isSeatData(seat.metadata)) return seat.metadata;
-  if (!seat.assignment) return null;
+  const base = isSeatData(seat.metadata) ? seat.metadata : null;
+  if (!seat.assignment) return base;
 
   return {
-    id: seat.seatKey,
-    name: seat.assignment.displayName,
-    isGuest: seat.kind === 'guest',
-    guestNumber: seat.assignment.guestNumber ?? undefined,
-    isHost: seat.kind === 'host',
-    hostFor: seat.assignment.hostFor ?? undefined,
-    isSound: seat.kind === 'sound',
-    isDuty: seat.kind === 'duty',
-    role: seat.assignment.role ?? undefined,
+    ...(base || {
+      id: seat.seatKey,
+      name: seat.assignment.displayName,
+      isGuest: seat.kind === 'guest',
+      guestNumber: seat.assignment.guestNumber ?? undefined,
+      isHost: seat.kind === 'host',
+      hostFor: seat.assignment.hostFor ?? undefined,
+      isSound: seat.kind === 'sound',
+      isDuty: seat.kind === 'duty',
+      role: seat.assignment.role ?? undefined,
+    }),
+    attendanceStatus: seat.assignment.status,
   };
 }
 

@@ -17,6 +17,7 @@ export interface SeatData {
   isSound?: boolean;       // 音控
   isDuty?: boolean;        // 值日生
   role?: string;           // 行業 / 職稱
+  attendanceStatus?: string; // 報到狀態
 }
 
 export interface SeatingLayout {

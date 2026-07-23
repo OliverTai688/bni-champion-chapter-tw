@@ -8,6 +8,7 @@ import { EventPublicationControls } from '@/components/event-publication-control
 import { SeatTemplateSavePanel } from '@/components/seat-template-save-panel';
 import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
 import { listAdminEventSessions } from '@/server/repositories/admin-event-sessions-repository';
+import { AdminEventPrintButton } from '@/components/admin-event-print-button';
 
 export async function generateMetadata(props: PageProps<'/admin/events/[weekId]'>) {
   const { weekId } = await props.params;
@@ -47,6 +48,7 @@ export default async function AdminEventPage(props: PageProps<'/admin/events/[we
               <CalendarDays className="h-4 w-4" />
               座位表列表
             </Link>
+            <AdminEventPrintButton weekId={session.weekId} />
             <Link
               href={`/seats/${encodeURIComponent(session.weekId)}`}
               className="inline-flex items-center gap-2 rounded-md bg-foreground px-3 py-2 text-xs font-black text-background"

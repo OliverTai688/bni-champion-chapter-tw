@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { SeatData, SeatingWorkspaceState } from '@/types/seating';
 import { buildPersonChainIndex } from '@/lib/industry-chains';
+import type { AdminSeatingWorkspaceDTO } from '@/application/seating/dto';
+import type { IndustryChain } from '@/types/seating';
 
 const CHAIN_COLORS: Record<string, { bg: string; color: string }> = {
   A: { bg: '#ef4444', color: '#fff' },
@@ -36,6 +38,7 @@ function SeatCard({ seat, chainIds }: { seat: SeatData | null; chainIds?: string
   const isProxy = seat.role === '代理';
   const isSound = seat.isSound;
   const isDuty = seat.isDuty;
+  const isCheckedIn = seat.attendanceStatus === 'checked_in';
 
   let cardStyle: React.CSSProperties = { background: '#fff', border: '1.5px solid #d1d5db' };
   if (isGuest)       cardStyle = { background: '#eef2ff', border: '2px solid #818cf8' };
@@ -106,8 +109,30 @@ function SeatCard({ seat, chainIds }: { seat: SeatData | null; chainIds?: string
       )}
 
       {/* Name */}
-      <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', lineHeight: 1.3 }}>
-        {seat.name}
+      <span style={{
+        fontSize: 15,
+        fontWeight: 700,
+        color: '#0f172a',
+        lineHeight: 1.3,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '4px',
+      }}>
+        {isCheckedIn && (
+          <svg
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            style={{ width: 14, height: 14, color: '#10b981', flexShrink: 0 }}
+          >
+            <path
+              fillRule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clipRule="evenodd"
+            />
+          </svg>
+        )}
+        <span>{seat.name}</span>
       </span>
 
       {/* Industry chain tags */}
@@ -135,19 +160,103 @@ function SeatCard({ seat, chainIds }: { seat: SeatData | null; chainIds?: string
   );
 }
 
+function mapAdminDtoToState(dto: AdminSeatingWorkspaceDTO): SeatingWorkspaceState {
+  const isSeatData = (value: unknown): value is SeatData => {
+    return Boolean(value && typeof value === 'object' && typeof (value as SeatData).name === 'string');
+  };
+
+  const toSeatDataFromSeat = (seat: AdminSeatingWorkspaceDTO['seats'][number]): SeatData | null => {
+    const base = isSeatData(seat.metadata) ? seat.metadata : null;
+    if (!seat.assignment) return base;
+
+    return {
+      ...(base || {
+        id: seat.seatKey,
+        name: seat.assignment.displayName,
+        isGuest: seat.kind === 'guest',
+        guestNumber: seat.assignment.guestNumber ?? undefined,
+        isHost: seat.kind === 'host',
+        hostFor: seat.assignment.hostFor ?? undefined,
+        isSound: seat.kind === 'sound',
+        isDuty: seat.kind === 'duty',
+        role: seat.assignment.role ?? undefined,
+      }),
+      attendanceStatus: seat.assignment.status,
+    };
+  };
+
+  const topSeats = dto.seats
+    .filter((s) => s.zone === 'top')
+    .sort((a, b) => a.position - b.position)
+    .map(toSeatDataFromSeat)
+    .filter((s): s is SeatData => s !== null);
+
+  const topRoles = topSeats.length > 0
+    ? topSeats
+    : (Array.isArray(dto.seatMap.topRoles)
+        ? dto.seatMap.topRoles.filter(isSeatData)
+        : []);
+
+  const items = dto.seats
+    .filter((seat) => seat.zone === 'main')
+    .sort((a, b) => a.position - b.position)
+    .map(toSeatDataFromSeat);
+
+  return {
+    week: {
+      id: dto.weekId,
+      date: dto.date,
+      title: dto.title,
+      chapterName: dto.chapterName,
+      meetingLabel: dto.meetingLabel,
+      source: dto.status === 'draft' ? 'draft' : 'generated',
+    },
+    topRoles,
+    items,
+    memberRoster: dto.seatMap.memberRoster,
+    heroes: dto.seatMap.heroes,
+    industryChains: (dto.seatMap.industryChains as IndustryChain[]) ?? [],
+    updatedAt: dto.updatedAt,
+  };
+}
+
 export default function PrintPage() {
   const [state, setState] = useState<SeatingWorkspaceState | null>(null);
 
   useEffect(() => {
-    const loadTimer = window.setTimeout(() => {
-      const raw = sessionStorage.getItem('print-state') ?? localStorage.getItem('print-state');
-      if (raw) setState(JSON.parse(raw));
-    }, 0);
-    const printTimer = window.setTimeout(() => window.print(), 700);
-    return () => {
-      window.clearTimeout(loadTimer);
-      window.clearTimeout(printTimer);
-    };
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryWeekId = searchParams.get('weekId');
+
+    if (queryWeekId) {
+      let active = true;
+      fetch(`/api/seats/${encodeURIComponent(queryWeekId)}?view=admin`)
+        .then(async (res) => {
+          if (!res.ok) throw new Error('讀取座位資料失敗');
+          return res.json() as Promise<AdminSeatingWorkspaceDTO>;
+        })
+        .then((dto) => {
+          if (!active) return;
+          setState(mapAdminDtoToState(dto));
+          window.setTimeout(() => window.print(), 700);
+        })
+        .catch((err) => {
+          console.error('Print page loading error:', err);
+        });
+
+      return () => {
+        active = false;
+      };
+    } else {
+      const loadTimer = window.setTimeout(() => {
+        const raw = sessionStorage.getItem('print-state') ?? localStorage.getItem('print-state');
+        if (raw) setState(JSON.parse(raw));
+      }, 0);
+      const printTimer = window.setTimeout(() => window.print(), 700);
+      return () => {
+        window.clearTimeout(loadTimer);
+        window.clearTimeout(printTimer);
+      };
+    }
   }, []);
 
   const personChainIndex = state
@@ -249,8 +358,25 @@ export default function PrintPage() {
                       background: c.bg, border: `2px solid ${c.border}`,
                       borderRadius: 10, padding: '8px 4px',
                       fontSize: 15, fontWeight: 700, color: c.text,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
                     }}>
-                      {role.name}
+                      {role.attendanceStatus === 'checked_in' && (
+                        <svg
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                          style={{ width: 14, height: 14, color: '#10b981', flexShrink: 0 }}
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                      <span>{role.name}</span>
                     </div>
                   </div>
                 );
