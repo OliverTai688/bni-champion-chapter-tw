@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { SeatData, SeatingWorkspaceState } from '@/types/seating';
 import { buildPersonChainIndex } from '@/lib/industry-chains';
 import type { AdminSeatingWorkspaceDTO } from '@/application/seating/dto';
-import type { IndustryChain } from '@/types/seating';
 
 const CHAIN_COLORS: Record<string, { bg: string; color: string }> = {
   A: { bg: '#ef4444', color: '#fff' },
@@ -160,68 +159,182 @@ function SeatCard({ seat, chainIds }: { seat: SeatData | null; chainIds?: string
   );
 }
 
-function mapAdminDtoToState(dto: AdminSeatingWorkspaceDTO): SeatingWorkspaceState {
-  const isSeatData = (value: unknown): value is SeatData => {
-    return Boolean(value && typeof value === 'object' && typeof (value as SeatData).name === 'string');
-  };
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" style={{ width: 12, height: 12, flexShrink: 0 }}>
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
 
-  const toSeatDataFromSeat = (seat: AdminSeatingWorkspaceDTO['seats'][number]): SeatData | null => {
-    const base = isSeatData(seat.metadata) ? seat.metadata : null;
-    if (!seat.assignment) return base;
+function CircleIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.6} style={{ width: 12, height: 12, flexShrink: 0 }}>
+      <circle cx="10" cy="10" r="7.2" />
+    </svg>
+  );
+}
 
-    return {
-      ...(base || {
-        id: seat.seatKey,
-        name: seat.assignment.displayName,
-        isGuest: seat.kind === 'guest',
-        guestNumber: seat.assignment.guestNumber ?? undefined,
-        isHost: seat.kind === 'host',
-        hostFor: seat.assignment.hostFor ?? undefined,
-        isSound: seat.kind === 'sound',
-        isDuty: seat.kind === 'duty',
-        role: seat.assignment.role ?? undefined,
-      }),
-      attendanceStatus: seat.assignment.status,
-    };
-  };
+function SummaryStat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div style={{
+      borderRadius: 10,
+      padding: '10px 12px',
+      background: accent ? 'rgba(16,185,129,0.1)' : 'rgba(0,0,0,0.03)',
+    }}>
+      <div style={{ fontSize: 22, fontWeight: 900, color: accent ? '#059669' : '#0f172a' }}>{value}</div>
+      <div style={{ marginTop: 2, fontSize: 11, fontWeight: 700, color: '#6b7280' }}>{label}</div>
+    </div>
+  );
+}
 
-  const topSeats = dto.seats
-    .filter((s) => s.zone === 'top')
-    .sort((a, b) => a.position - b.position)
-    .map(toSeatDataFromSeat)
-    .filter((s): s is SeatData => s !== null);
+function AttendanceSeatTile({ seat }: { seat: AdminSeatingWorkspaceDTO['seats'][number] }) {
+  const occupied = Boolean(seat.assignment);
+  const checkedIn = seat.assignment?.status === 'checked_in';
+  const positionLabel = seat.zone === 'top' ? 'TOP' : seat.seatKey.replace('main-', '');
 
-  const topRoles = topSeats.length > 0
-    ? topSeats
-    : (Array.isArray(dto.seatMap.topRoles)
-        ? dto.seatMap.topRoles.filter(isSeatData)
-        : []);
+  const cardStyle: React.CSSProperties = checkedIn
+    ? { border: '1.5px solid #34d399', background: 'rgba(16,185,129,0.08)' }
+    : occupied
+      ? { border: '1.5px solid #d1d5db', background: '#fff' }
+      : { border: '1.5px dashed #d1d5db', background: 'rgba(0,0,0,0.02)' };
 
-  const items = dto.seats
-    .filter((seat) => seat.zone === 'main')
-    .sort((a, b) => a.position - b.position)
-    .map(toSeatDataFromSeat);
+  return (
+    <div style={{ ...cardStyle, borderRadius: 10, minHeight: 76, padding: '10px 10px 8px', opacity: occupied ? 1 : 0.5 }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        fontSize: 10, fontWeight: 900, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase',
+      }}>
+        <span>{positionLabel}</span>
+        {occupied ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: checkedIn ? '#059669' : '#9ca3af' }}>
+            {checkedIn ? <CheckIcon /> : <CircleIcon />}
+            {checkedIn ? '已抵達' : '未到'}
+          </span>
+        ) : null}
+      </div>
+      <div style={{ marginTop: 6, fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+        {seat.assignment?.displayName ?? '空位'}
+      </div>
+      {occupied ? (
+        <div style={{ marginTop: 2, fontSize: 11, color: '#6b7280' }}>
+          {seat.assignment?.role ?? seat.kind}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
-  return {
-    week: {
-      id: dto.weekId,
-      date: dto.date,
-      title: dto.title,
-      chapterName: dto.chapterName,
-      meetingLabel: dto.meetingLabel,
-      source: dto.status === 'draft' ? 'draft' : 'generated',
-    },
-    topRoles,
-    items,
-    memberRoster: dto.seatMap.memberRoster,
-    heroes: dto.seatMap.heroes,
-    industryChains: (dto.seatMap.industryChains as IndustryChain[]) ?? [],
-    updatedAt: dto.updatedAt,
-  };
+function AttendanceReport({ dto }: { dto: AdminSeatingWorkspaceDTO }) {
+  const topSeats = dto.seats.filter((s) => s.zone === 'top').sort((a, b) => a.position - b.position);
+  const mainSeats = dto.seats.filter((s) => s.zone !== 'top').sort((a, b) => a.position - b.position);
+  const mainCols = mainSeats.filter((s) => s.col !== null).map((s) => s.col ?? 0);
+  const mainColumns = Math.max(4, ...mainCols.map((c) => c + 1));
+
+  const checkedInRate = dto.summary.occupiedSeats > 0
+    ? Math.round((dto.summary.checkedInCount / dto.summary.occupiedSeats) * 100)
+    : 0;
+
+  const zoneStats = dto.zones.map((zone) => ({
+    zone: zone.zone,
+    occupiedSeats: zone.occupiedSeats,
+    checkedInCount: dto.seats.filter((s) => s.zone === zone.zone && s.assignment?.status === 'checked_in').length,
+  }));
+
+  return (
+    <>
+      <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '0.16em', color: '#9ca3af', textTransform: 'uppercase' }}>
+        {dto.date} · {dto.meetingLabel}
+      </div>
+      <h1 style={{ marginTop: 4, fontSize: 22, fontWeight: 900, color: '#0f172a' }}>
+        {dto.title} 出席報表
+      </h1>
+      <p style={{ marginTop: 4, marginBottom: 16, fontSize: 12, color: '#6b7280' }}>
+        {dto.chapterName} · 列印時間 {new Date().toLocaleString('zh-TW')}
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+        <SummaryStat label="總座位" value={dto.summary.totalSeats} />
+        <SummaryStat label="已安排" value={dto.summary.occupiedSeats} />
+        <SummaryStat label="已抵達" value={dto.summary.checkedInCount} accent />
+      </div>
+
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 4 }}>
+          <span>整體報到率</span>
+          <span>{checkedInRate}%</span>
+        </div>
+        <div style={{ height: 8, borderRadius: 99, background: 'rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${checkedInRate}%`, borderRadius: 99, background: '#10b981' }} />
+        </div>
+      </div>
+
+      {zoneStats.length > 0 && (
+        <div style={{ marginBottom: 18, border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, color: '#6b7280', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            區域狀態
+          </div>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {zoneStats.map((zone) => (
+              <div key={zone.zone}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700, color: '#6b7280', marginBottom: 3 }}>
+                  <span>{zone.zone}</span>
+                  <span>{zone.checkedInCount}/{zone.occupiedSeats} 已抵達</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 99, background: 'rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${zone.occupiedSeats > 0 ? Math.min(100, (zone.checkedInCount / zone.occupiedSeats) * 100) : 0}%`,
+                    borderRadius: 99,
+                    background: '#10b981',
+                  }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 10, fontSize: 11, fontWeight: 700, color: '#6b7280' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, border: '1.5px solid #34d399', background: 'rgba(16,185,129,0.15)' }} />
+          已抵達
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, border: '1.5px solid #d1d5db', background: '#fff' }} />
+          已安排
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, border: '1.5px dashed #d1d5db', background: 'rgba(0,0,0,0.02)' }} />
+          空位
+        </span>
+      </div>
+
+      {topSeats.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${topSeats.length}, 1fr)`, gap: 8, marginBottom: 12 }}>
+          {topSeats.map((seat) => <AttendanceSeatTile key={seat.id} seat={seat} />)}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${mainColumns}, 1fr)`, gap: 8 }}>
+        {mainSeats.map((seat) => <AttendanceSeatTile key={seat.id} seat={seat} />)}
+      </div>
+
+      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', color: '#9ca3af', fontSize: 10 }}>
+        <span>智慧排位系統 v1.0</span>
+        <span>列印日期：{new Date().toLocaleDateString('zh-TW')}</span>
+      </div>
+    </>
+  );
 }
 
 export default function PrintPage() {
   const [state, setState] = useState<SeatingWorkspaceState | null>(null);
+  const [rawDto, setRawDto] = useState<AdminSeatingWorkspaceDTO | null>(null);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -236,7 +349,7 @@ export default function PrintPage() {
         })
         .then((dto) => {
           if (!active) return;
-          setState(mapAdminDtoToState(dto));
+          setRawDto(dto);
           window.setTimeout(() => window.print(), 700);
         })
         .catch((err) => {
@@ -292,9 +405,11 @@ export default function PrintPage() {
       `}</style>
 
       <div className="print-root">
-        {!state ? (
+        {rawDto ? (
+          <AttendanceReport dto={rawDto} />
+        ) : !state ? (
           <p style={{ color: '#6b7280', padding: 40 }}>
-            讀取座位資料中…若未自動列印，請重新點擊「匯出 PDF」按鈕。
+            讀取資料中…若未自動列印，請重新點擊匯出按鈕。
           </p>
         ) : (
           <>
