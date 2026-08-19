@@ -8,7 +8,14 @@
       "Bash(curl -s http://localhost:3000/seats)",
       "WebFetch(domain:blog.react-pdf-kit.dev)",
       "WebFetch(domain:react-pdf.org)",
-      "WebFetch(domain:dominikfrackowiak.com)"
+      "WebFetch(domain:dominikfrackowiak.com)",
+      "Bash(grep -n \"setInterval\\\\|fetch\\(\\\\`/api\\\\|fetch\\('/api\\\\|useEffect\" src/components/SeatingArranger.tsx)",
+      "Bash(lsof -nP -iTCP:3000 -sTCP:LISTEN)",
+      "Bash(curl -s -o /dev/null -w \"http_status:%{http_code}\\\\n\" http://localhost:3000/seats/2026-07-16)",
+      "Bash(ps -o pid,lstart,command -p 77290)",
+      "Bash(curl -s http://localhost:3000/seats/2026-07-16 -o /tmp/seats0716.html)",
+      "Bash(awk '{print NR\": \"$0}')",
+      "Bash(python3 -c ' *)"
     ]
   }
 }

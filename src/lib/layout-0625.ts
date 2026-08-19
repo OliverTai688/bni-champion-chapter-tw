@@ -28,7 +28,7 @@ export const ROSTER_0625: Roster = {
     '馬廷軒', '洪宗宏', '黃佳琪', '叢晧日', '吳振綱', '郭子郁', 
     '蘇子茵', '梁文齡', '黃柔涵', '王建豐', '林家均', '林子晏', 
     '陳宜均', '劉庭羽', '黃嘉琪', '葉心琳', '邱柏瀚', '王柏詠', 
-    '陳泓睿', '簡偉志', '戴宇星', '陳志誠', '陳俊鳴', '程睿紳',
+    '陳泓睿', '洪麗卿', '黃杰', '戴宇星', '陳志誠', '陳俊鳴', '程睿紳',
     '黎士銓', '邱孟婷', '蘇冠霖', '田謦蓉', '王致崴', '林道元'
   ],
 
@@ -98,10 +98,10 @@ export const LAYOUT_0625: SeatingLayout = {
       { id: 'g-7-3', name: '戴宇星', isGuest: false },
     ],
     [
-      { id: 'g-8-0', name: '簡偉志', isGuest: false },
+      { id: 'g-8-0', name: '洪麗卿', isGuest: false },
       { id: 'g-8-1', name: '陳俊鳴', isGuest: false },
       { id: 'g-8-2', name: '林塏秢', isGuest: false, role: '代理' },
-      null,
+      { id: 'g-8-3', name: '黃杰', isGuest: false },
     ],
     [
       null,

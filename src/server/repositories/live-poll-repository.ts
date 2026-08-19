@@ -82,6 +82,17 @@ function readOptionMetadata(metadata: unknown) {
   };
 }
 
+// Thrown when the week's seating isn't fully saved yet, so a poll built right
+// now would silently exclude roster members who don't have a seat committed
+// to the database (e.g. a seat import still in progress). Surfaced to the
+// admin as a blocking error instead of a poll that quietly leaves people out.
+export class PollRosterIncompleteError extends Error {
+  constructor(public readonly missingMembers: string[]) {
+    super(`以下會員名冊成員尚未有座位資料，暫時無法建立投票：${missingMembers.join('、')}。請確認座位表已存檔完成後再試一次。`);
+    this.name = 'PollRosterIncompleteError';
+  }
+}
+
 function rankPollOptions(options: Array<{
   id: string;
   label: string;
@@ -144,6 +155,20 @@ export async function createStarPollForWeek(weekId: string, eligibility: 'code_r
   const seatMap = session?.seatMaps[0];
   if (!session || !seatMap) return null;
 
+  const candidateSeats = seatMap.seats.filter((seat) => {
+    const assignment = seat.assignments[0];
+    return assignment && seat.kind !== 'guest' && seat.kind !== 'empty';
+  });
+
+  // Guarantee every roster member becomes a candidate. Computed and checked
+  // before any writes below so a mid-import poll click fails loudly instead
+  // of archiving the previous poll and opening an incomplete one.
+  const candidateNames = new Set(candidateSeats.map((seat) => seat.assignments[0]!.displayName));
+  const missingRosterMembers = seatMap.memberRoster.filter((name) => !candidateNames.has(name));
+  if (missingRosterMembers.length > 0) {
+    throw new PollRosterIncompleteError(missingRosterMembers);
+  }
+
   await prisma.livePoll.updateMany({
     where: {
       sessionId: session.id,
@@ -177,11 +202,6 @@ export async function createStarPollForWeek(weekId: string, eligibility: 'code_r
     select: {
       id: true,
     },
-  });
-
-  const candidateSeats = seatMap.seats.filter((seat) => {
-    const assignment = seat.assignments[0];
-    return assignment && seat.kind !== 'guest' && seat.kind !== 'empty';
   });
 
   for (let index = 0; index < candidateSeats.length; index++) {

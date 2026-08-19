@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { SeatData, SeatingWorkspaceState } from '@/types/seating';
 import { buildPersonChainIndex } from '@/lib/industry-chains';
+import { CHAPTER_MEMBER_DIRECTORY } from '@/lib/chapter-members';
 import type { AdminSeatingWorkspaceDTO } from '@/application/seating/dto';
 
 const CHAIN_COLORS: Record<string, { bg: string; color: string }> = {
@@ -229,11 +230,54 @@ function AttendanceSeatTile({ seat }: { seat: AdminSeatingWorkspaceDTO['seats'][
   );
 }
 
+function NameListCard({ title, names, emptyLabel }: { title: string; names: string[]; emptyLabel: string }) {
+  return (
+    <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
+      <div style={{
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        fontSize: 11, fontWeight: 900, color: '#6b7280', marginBottom: 8,
+        textTransform: 'uppercase', letterSpacing: '0.1em',
+      }}>
+        <span>{title}</span>
+        <span style={{ fontSize: 13, color: '#0f172a' }}>{names.length}</span>
+      </div>
+      {names.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {names.map((name) => (
+            <span key={name} style={{
+              background: 'rgba(0,0,0,0.04)', borderRadius: 8,
+              padding: '3px 9px', fontSize: 12, fontWeight: 700, color: '#374151',
+            }}>
+              {name}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p style={{ fontSize: 12, color: '#9ca3af' }}>{emptyLabel}</p>
+      )}
+    </div>
+  );
+}
+
 function AttendanceReport({ dto }: { dto: AdminSeatingWorkspaceDTO }) {
   const topSeats = dto.seats.filter((s) => s.zone === 'top').sort((a, b) => a.position - b.position);
   const mainSeats = dto.seats.filter((s) => s.zone !== 'top').sort((a, b) => a.position - b.position);
   const mainCols = mainSeats.filter((s) => s.col !== null).map((s) => s.col ?? 0);
   const mainColumns = Math.max(4, ...mainCols.map((c) => c + 1));
+
+  const proxyNames = dto.seats
+    .filter((s) => s.assignment && (s.kind === 'proxy' || s.assignment.role === '代理'))
+    .map((s) => s.assignment!.displayName);
+
+  const presentNameSet = new Set(
+    dto.seats
+      .filter((s) => s.assignment)
+      .map((s) => s.assignment!.displayName.trim())
+      .filter(Boolean),
+  );
+  const absentNames = CHAPTER_MEMBER_DIRECTORY
+    .filter((member) => !presentNameSet.has(member.name.trim()))
+    .map((member) => member.name);
 
   const checkedInRate = dto.summary.occupiedSeats > 0
     ? Math.round((dto.summary.checkedInCount / dto.summary.occupiedSeats) * 100)
@@ -298,6 +342,11 @@ function AttendanceReport({ dto }: { dto: AdminSeatingWorkspaceDTO }) {
           </div>
         </div>
       )}
+
+      <div style={{ marginBottom: 18, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <NameListCard title="本次代理人" names={proxyNames} emptyLabel="本次無代理人" />
+        <NameListCard title="本次未出席" names={absentNames} emptyLabel="本次全員出席" />
+      </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 10, fontSize: 11, fontWeight: 700, color: '#6b7280' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>

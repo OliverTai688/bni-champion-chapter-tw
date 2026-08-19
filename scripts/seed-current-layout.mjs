@@ -44,12 +44,12 @@ function seatKind(seat) {
   return 'member';
 }
 
-const { LAYOUT_0611, ROSTER_0611 } = loadTsModule('src/lib/layout-0611.ts');
+const { LAYOUT_0813, ROSTER_0813 } = loadTsModule('src/lib/layout-0813.ts');
 
 const meetingSession = {
-  weekId: '2026-06-11',
-  date: '2026-06-11T00:00:00.000Z',
-  title: '115/06/11 座位表',
+  weekId: '2026-08-13',
+  date: '2026-08-13T00:00:00.000Z',
+  title: '115/08/13 座位表',
   chapterName: 'BNI 長冠軍分會',
   meetingLabel: '每週例會排座',
   source: 'seed',
@@ -57,18 +57,18 @@ const meetingSession = {
 };
 
 const memberNames = new Set([
-  ...ROSTER_0611.hostTeam.map((member) => member.name),
-  ROSTER_0611.sound,
-  ROSTER_0611.duty,
-  ...ROSTER_0611.guests.flatMap((guest) => [guest.guestName, guest.hostName]),
-  ...ROSTER_0611.members,
-  ...ROSTER_0611.proxies,
+  ...ROSTER_0813.hostTeam.map((member) => member.name),
+  ROSTER_0813.sound,
+  ROSTER_0813.duty,
+  ...ROSTER_0813.guests.flatMap((guest) => [guest.guestName, guest.hostName]),
+  ...ROSTER_0813.members,
+  ...ROSTER_0813.proxies,
 ].filter(Boolean));
 
 const seats = [];
 const assignments = [];
 
-LAYOUT_0611.topRoles.forEach((seat, index) => {
+LAYOUT_0813.topRoles.forEach((seat, index) => {
   const seatKey = `top-${index}`;
   seats.push({
     seatKey,
@@ -91,7 +91,7 @@ LAYOUT_0611.topRoles.forEach((seat, index) => {
   });
 });
 
-LAYOUT_0611.mainGrid.forEach((row, rowIndex) => {
+LAYOUT_0813.mainGrid.forEach((row, rowIndex) => {
   row.forEach((seat, colIndex) => {
     const position = rowIndex * row.length + colIndex;
     const seatKey = `main-${rowIndex}-${colIndex}`;
@@ -124,10 +124,10 @@ const seatMap = {
   version: 1,
   status: 'draft',
   layoutKind: 'bni-weekly-grid',
-  topRoles: LAYOUT_0611.topRoles,
-  memberRoster: ROSTER_0611.members,
-  heroes: ROSTER_0611.heroes,
-  industryChains: ROSTER_0611.industryChains,
+  topRoles: LAYOUT_0813.topRoles,
+  memberRoster: ROSTER_0813.members,
+  heroes: ROSTER_0813.heroes,
+  industryChains: ROSTER_0813.industryChains,
   source: 'seed',
 };
 
@@ -135,10 +135,10 @@ const revision = {
   version: 1,
   snapshot: {
     week: meetingSession,
-    topRoles: LAYOUT_0611.topRoles,
-    mainGrid: LAYOUT_0611.mainGrid,
-    sidebar: LAYOUT_0611.sidebar,
-    roster: ROSTER_0611,
+    topRoles: LAYOUT_0813.topRoles,
+    mainGrid: LAYOUT_0813.mainGrid,
+    sidebar: LAYOUT_0813.sidebar,
+    roster: ROSTER_0813,
   },
   validationSummary: null,
   createdBy: 'seed-current-layout',
@@ -193,7 +193,7 @@ async function writeSeed() {
         create: {
           displayName,
           roles: [],
-          metadata: { importedFrom: 'layout-0611' },
+          metadata: { importedFrom: 'layout-0813' },
         },
         update: {
           isActive: true,

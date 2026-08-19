@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { CalendarDays, Clock, ExternalLink, LogIn, Mail, UserRound, Vote } from 'lucide-react';
 import { AdminPasswordGate } from '@/components/admin-password-gate';
+import { AdminAttendanceRangeExportPanel } from '@/components/admin-attendance-range-export-panel';
 import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
 import { listAdminEventSessions } from '@/server/repositories/admin-event-sessions-repository';
 import { listGoogleLoginRecords } from '@/server/repositories/admin-login-records-repository';
@@ -38,6 +39,8 @@ export default async function AdminPage() {
             最近 {records.length} 筆
           </div>
         </div>
+
+        <AdminAttendanceRangeExportPanel />
 
         <div className="overflow-hidden rounded-lg border border-foreground/10">
           <div className="hidden grid-cols-[1.2fr_1.4fr_0.9fr] gap-3 bg-foreground/[0.04] px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-foreground/40 sm:grid">

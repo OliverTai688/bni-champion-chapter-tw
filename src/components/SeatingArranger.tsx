@@ -245,8 +245,10 @@ function buildRoster(
   const proxies = items
     .filter((s): s is SeatData => !!s && s.role === '代理')
     .map((s) => s.name);
+  const proxyNames = new Set(proxies.map((name) => name.trim()).filter(Boolean));
+  const members = memberRoster.filter((name) => !proxyNames.has(name.trim()));
 
-  return { hostTeam, sound, duty, guests, members: memberRoster, proxies, industryChains, heroes };
+  return { hostTeam, sound, duty, guests, members, proxies, industryChains, heroes };
 }
 
 function applyRoster(
@@ -280,6 +282,7 @@ function applyRoster(
     }
     return s;
   });
+  const proxyNames = new Set(next.proxies.map((name) => name.trim()).filter(Boolean));
 
   const placedGuestNumbers = new Set(
     newItems.filter((s): s is SeatData => Boolean(s?.isGuest && s.guestNumber)).map((s) => s.guestNumber!),
@@ -318,7 +321,7 @@ function applyRoster(
 
   for (let i = 0; i < next.members.length; i++) {
     const name = next.members[i].trim();
-    if (!name || seatedMemberNames.has(name)) continue;
+    if (!name || seatedMemberNames.has(name) || proxyNames.has(name)) continue;
     placeInFirstEmpty(newItems, {
       id: createSeatId('member', i),
       name,
@@ -339,7 +342,12 @@ function applyRoster(
 
   ensureFullRows(newItems);
 
-  return { topRoles: newTopRoles, items: newItems, heroes: next.heroes, memberRoster: next.members };
+  return {
+    topRoles: newTopRoles,
+    items: newItems,
+    heroes: next.heroes,
+    memberRoster: next.members.filter((name) => !proxyNames.has(name.trim())),
+  };
 }
 
 function createStateSnapshot(
@@ -500,6 +508,23 @@ export default function SeatingArranger({
   const guestCount = useMemo(() => items.filter((seat) => seat?.isGuest).length, [items]);
   const proxyCount = useMemo(() => items.filter((seat) => seat?.role === '代理').length, [items]);
 
+  // Anyone seated on the chart (top roles + main grid) except guests counts as
+  // attending this week and is eligible as a vote candidate — mirrors the
+  // server-side candidate filter in createStarPollForWeek (kind !== 'guest').
+  const attendingNames = useMemo(() => {
+    const names = new Set<string>();
+    topRoles.forEach((seat) => {
+      const name = seat?.name?.trim();
+      if (name) names.add(name);
+    });
+    items.forEach((seat) => {
+      if (!seat || seat.isGuest) return;
+      const name = seat.name?.trim();
+      if (name) names.add(name);
+    });
+    return names;
+  }, [topRoles, items]);
+
   const handleApplyRoster = (next: Roster) => {
     const { topRoles: nt, items: ni, heroes: nh, memberRoster: nm } = applyRoster(topRoles, items, next);
     setTopRoles(nt);
@@ -617,7 +642,7 @@ export default function SeatingArranger({
             <Metric label="座位人數" value={occupiedCount} />
             <Metric label="來賓" value={guestCount} />
             <Metric label="代理" value={proxyCount} />
-            <Metric label="固定成員" value={memberRoster.length} />
+            <Metric label="固定成員" value={attendingNames.size} />
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -671,7 +696,7 @@ export default function SeatingArranger({
         </section>
 
         <RuleReference />
-        <MemberDirectory memberRoster={memberRoster} />
+        <MemberDirectory attendingNames={attendingNames} />
       </div>
 
       {/* Capture area for PDF export */}
@@ -837,22 +862,23 @@ function RuleReference() {
   );
 }
 
-function MemberDirectory({ memberRoster }: { memberRoster: string[] }) {
-  const activeSet = new Set(memberRoster.map((name) => name.trim()).filter(Boolean));
-
+function MemberDirectory({ attendingNames }: { attendingNames: Set<string> }) {
   return (
     <section className="rounded-2xl border border-foreground/10 bg-foreground/[0.03] p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-black uppercase tracking-[0.18em]">成員列表</h3>
           <p className="mt-1 text-xs text-foreground/45">
-            分會名冊 {CHAPTER_MEMBER_DIRECTORY.length} 人 / 本週固定出席 {activeSet.size} 人
+            分會名冊 {CHAPTER_MEMBER_DIRECTORY.length} 人 / 本週固定出席 {attendingNames.size} 人
+          </p>
+          <p className="mt-1 text-[10px] text-foreground/35">
+            綠色標示為本週已排入座位表者，同時皆可作為投票候選人。
           </p>
         </div>
       </div>
       <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
         {CHAPTER_MEMBER_DIRECTORY.map((member) => {
-          const active = activeSet.has(member.name);
+          const active = attendingNames.has(member.name);
           return (
             <div
               key={member.name}

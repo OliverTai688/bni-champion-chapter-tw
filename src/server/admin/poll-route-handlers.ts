@@ -7,6 +7,7 @@ import {
   createStarPollForWeek,
   exportAdminPollCsv,
   listAdminPollsForWeek,
+  PollRosterIncompleteError,
 } from '@/server/repositories/live-poll-repository';
 
 async function hasAdminAccess() {
@@ -35,7 +36,23 @@ export async function handleAdminPollsPOST(request: Request, weekId: string) {
 
   const body = await request.json().catch(() => null);
   const eligibility = body?.eligibility === 'public' ? 'public' : 'code_required';
-  const result = await createStarPollForWeek(weekId, eligibility);
+
+  let result;
+  try {
+    result = await createStarPollForWeek(weekId, eligibility);
+  } catch (error) {
+    if (error instanceof PollRosterIncompleteError) {
+      return Response.json(
+        {
+          error: 'poll_roster_incomplete',
+          message: error.message,
+          missingMembers: error.missingMembers,
+        },
+        { status: 409 },
+      );
+    }
+    throw error;
+  }
 
   if (!result) {
     return Response.json(
