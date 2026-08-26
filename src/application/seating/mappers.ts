@@ -40,6 +40,7 @@ type SeatMapRecord = {
     chapterName: string;
     meetingLabel: string;
     status: string;
+    metadata: unknown;
   };
   seats: SeatRecord[];
   assignments: Array<{
@@ -106,6 +107,7 @@ export function toPublicSeatMapSummaryDTO(record: SeatMapRecord): PublicSeatMapS
     },
     summary: buildSummary(record),
     zones: buildZones(record),
+    metadata: record.session.metadata,
     updatedAt: record.updatedAt.toISOString(),
   };
 }

@@ -78,12 +78,19 @@ export async function saveSeatingDraft(
   draft: NormalizedSeatingDraft,
   options?: { registrationMode?: boolean },
 ) {
-  // Only touch the session metadata when the caller explicitly sets the mode, so
-  // routine editor saves never clobber a previously chosen registration flag.
-  const sessionMetadata =
-    options?.registrationMode === undefined
-      ? undefined
-      : { savedFrom: 'seating-workspace', registrationMode: options.registrationMode };
+  const existing = await prisma.meetingSession.findUnique({
+    where: { weekId: draft.week.id },
+    select: { metadata: true },
+  });
+  const currentMetadata = (existing?.metadata && typeof existing.metadata === 'object')
+    ? (existing.metadata as Record<string, unknown>)
+    : {};
+
+  const updatedMetadata = {
+    ...currentMetadata,
+    savedFrom: 'seating-workspace',
+    ...(options?.registrationMode !== undefined ? { registrationMode: options.registrationMode } : {}),
+  };
 
   const session = await prisma.meetingSession.upsert({
     where: { weekId: draft.week.id },
@@ -96,7 +103,7 @@ export async function saveSeatingDraft(
       source: draft.week.source,
       status: 'draft',
       publicSlug: draftPublicSlug(draft.week.id),
-      metadata: sessionMetadata ?? { savedFrom: 'seating-workspace' },
+      metadata: updatedMetadata as Prisma.InputJsonValue,
     },
     update: {
       date: new Date(draft.week.date),
@@ -104,7 +111,7 @@ export async function saveSeatingDraft(
       chapterName: draft.week.chapterName,
       meetingLabel: draft.week.meetingLabel,
       source: draft.week.source,
-      ...(sessionMetadata ? { metadata: sessionMetadata } : {}),
+      metadata: updatedMetadata as Prisma.InputJsonValue,
     },
   });
 

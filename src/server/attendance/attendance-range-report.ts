@@ -104,14 +104,14 @@ export async function buildRangeAttendanceReport(fromInput: string, toInput: str
   }
 
   for (const report of eventReports) {
-    const proxyNameSet = new Set(report.proxyEntries.map((entry) => entry.displayName.trim()));
+    const proxyMemberSet = new Set((report.proxyMemberNames || []).map((name) => name.trim()));
     const presentNameSet = new Set(report.presentNames.map((name) => name.trim()));
 
     for (const member of CHAPTER_MEMBER_DIRECTORY) {
       const row = counters.get(member.name)!;
       const trimmedName = member.name.trim();
       row.totalEvents += 1;
-      if (proxyNameSet.has(trimmedName)) {
+      if (proxyMemberSet.has(trimmedName)) {
         row.proxyCount += 1;
       } else if (presentNameSet.has(trimmedName)) {
         row.presentCount += 1;

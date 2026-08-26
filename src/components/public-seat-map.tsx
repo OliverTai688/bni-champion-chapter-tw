@@ -110,6 +110,14 @@ function SeatLegend() {
         已抵達
       </span>
       <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-sm border border-amber-500/45 bg-amber-500/30" />
+        遲到
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-sm border border-red-500/20 bg-red-500/10" />
+        請假/未出席
+      </span>
+      <span className="inline-flex items-center gap-1.5">
         <span className="h-2.5 w-2.5 rounded-sm border border-foreground/20 bg-background" />
         已安排
       </span>
@@ -144,15 +152,27 @@ function SeatTile({
 }) {
   const occupied = Boolean(seat.occupantName);
   const checkedIn = seat.attendanceStatus === 'checked_in';
+  const late = seat.attendanceStatus === 'late';
+  const absent = seat.attendanceStatus === 'absent';
+  const isArrived = checkedIn || late;
   const headcount = Math.max(1, seat.headcount);
+
   const content = (
     <>
       <div className="flex items-center justify-between gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-foreground/35">
         <span>{seat.zone === 'top' ? 'TOP' : seat.seatKey.replace('main-', '')}</span>
         {occupied ? (
-          <span className={`inline-flex shrink-0 items-center gap-0.5 ${checkedIn ? 'text-emerald-600 dark:text-emerald-300' : 'text-foreground/35'}`}>
-            {checkedIn ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
-            {checkedIn ? '到' : '未到'}
+          <span className={`inline-flex shrink-0 items-center gap-0.5 ${
+            checkedIn
+              ? 'text-emerald-600 dark:text-emerald-300'
+              : late
+                ? 'text-amber-600 dark:text-amber-300'
+                : absent
+                  ? 'text-red-600 dark:text-red-300'
+                  : 'text-foreground/35'
+          }`}>
+            {isArrived ? <CheckCircle2 className="h-3 w-3" /> : <Circle className="h-3 w-3" />}
+            {checkedIn ? '到' : late ? '遲' : absent ? '假' : '未到'}
           </span>
         ) : (
           <span>{seat.label}</span>
@@ -166,7 +186,7 @@ function SeatTile({
       </div>
       {attendanceEnabled && occupied ? (
         registrationMode ? (
-          checkedIn ? (
+          isArrived ? (
             <div className="mt-3 space-y-1.5">
               <div className="flex items-center justify-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/[0.08] px-2 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300">
                 <UserRound className="h-3.5 w-3.5" />
@@ -205,16 +225,16 @@ function SeatTile({
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onAttendanceChange(seat.id, !checkedIn);
+              onAttendanceChange(seat.id, !isArrived);
             }}
             disabled={updating}
             className={`mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-md px-2 py-2 text-xs font-black transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 ${
-              checkedIn
+              isArrived
                 ? 'border border-emerald-500/25 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300'
                 : 'bg-foreground text-background hover:opacity-90'
             }`}
           >
-            {updating ? '更新中' : checkedIn ? '取消抵達' : '抵達'}
+            {updating ? '更新中' : isArrived ? '取消抵達' : '抵達'}
           </button>
         ) : null
       ) : null}
@@ -226,9 +246,13 @@ function SeatTile({
       ? 'border-emerald-500 bg-emerald-500/15 shadow-[0_0_0_2px_rgba(16,185,129,0.18)]'
       : checkedIn
         ? 'border-emerald-500/45 bg-emerald-500/10'
-        : occupied
-          ? 'border-foreground/15 bg-background/80'
-        : 'border-dashed border-foreground/15 bg-background/35 opacity-55'
+        : late
+          ? 'border-amber-500/45 bg-amber-500/10 shadow-[0_0_12px_rgba(245,158,11,0.08)]'
+          : absent
+            ? 'border-red-500/20 bg-red-500/5 opacity-60'
+            : occupied
+              ? 'border-foreground/15 bg-background/80'
+            : 'border-dashed border-foreground/15 bg-background/35 opacity-55'
   } ${clickable ? 'cursor-pointer hover:border-emerald-500/70 hover:bg-emerald-500/10' : ''}`;
 
   if (clickable) {

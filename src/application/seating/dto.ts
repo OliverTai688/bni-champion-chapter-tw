@@ -28,6 +28,7 @@ export interface PublicSeatMapSummaryDTO {
     totalSeats: number;
     occupiedSeats: number;
   }>;
+  metadata?: unknown;
   updatedAt: string;
 }
 

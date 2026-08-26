@@ -5,11 +5,13 @@ import { ArrowLeft, CalendarDays, ClipboardList, ExternalLink, Radio, UsersRound
 import { AdminPasswordGate } from '@/components/admin-password-gate';
 import { AdminPollControls } from '@/components/admin-poll-controls';
 import { EventPublicationControls } from '@/components/event-publication-controls';
+import { AdminAttendanceEditor } from '@/components/admin-attendance-editor';
 import { SeatTemplateSavePanel } from '@/components/seat-template-save-panel';
 import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
 import { listAdminEventSessions } from '@/server/repositories/admin-event-sessions-repository';
 import { AdminEventPrintButton } from '@/components/admin-event-print-button';
 import { AdminEventExcelExportButton } from '@/components/admin-event-excel-export-button';
+import { prisma } from '@/server/db/prisma';
 
 export async function generateMetadata(props: PageProps<'/admin/events/[weekId]'>) {
   const { weekId } = await props.params;
@@ -29,6 +31,13 @@ export default async function AdminEventPage(props: PageProps<'/admin/events/[we
   const sessions = await listAdminEventSessions();
   const session = sessions.find((item) => item.weekId === weekId);
   if (!session) notFound();
+
+  const rawSession = await prisma.meetingSession.findUnique({
+    where: { weekId },
+    select: { metadata: true },
+  });
+  const metadata = (rawSession?.metadata && typeof rawSession.metadata === 'object') ? (rawSession.metadata as Record<string, unknown>) : null;
+  const attendanceOverrides = (metadata?.attendanceOverrides as Record<string, { status: 'present' | 'absent' | 'late' | 'proxy'; proxyName?: string }>) || {};
 
   return (
     <main className="min-h-screen bg-background px-5 py-8 text-foreground">
@@ -95,6 +104,7 @@ export default async function AdminEventPage(props: PageProps<'/admin/events/[we
         </header>
 
         <EventPublicationControls weekId={session.weekId} embedded />
+        <AdminAttendanceEditor weekId={session.weekId} initialOverrides={attendanceOverrides} />
         <SeatTemplateSavePanel weekId={session.weekId} defaultName={`${session.title} 模板`} />
         <AdminPollControls weekId={session.weekId} />
       </section>

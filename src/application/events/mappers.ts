@@ -160,10 +160,37 @@ function buildSeatMap(record: PublicWeeklyEventRecord, seatMap: PublicSeatMapRec
     .map((seat) => seat.col ?? 0);
   const columns = Math.max(4, ...mainCols.map((col) => col + 1));
 
+  const overrides = (record.metadata && typeof record.metadata === 'object' && 'attendanceOverrides' in record.metadata)
+    ? ((record.metadata as Record<string, unknown>).attendanceOverrides as Record<string, { status: string; proxyName?: string }>)
+    : {};
+
   return {
     columns,
     seats: seatMap.seats.map((seat) => {
       const assignment = seat.assignments[0] ?? null;
+      let occupantName = assignment?.displayName ?? null;
+      let role = assignment?.role ?? null;
+      let attendanceStatus = assignment?.status ?? null;
+      let kind = seat.kind;
+
+      if (assignment) {
+        const override = overrides[assignment.displayName.trim()];
+        if (override) {
+          if (override.status === 'absent') {
+            attendanceStatus = 'absent';
+          } else if (override.status === 'late') {
+            attendanceStatus = 'late';
+          } else if (override.status === 'present') {
+            attendanceStatus = 'checked_in';
+          } else if (override.status === 'proxy') {
+            occupantName = override.proxyName || `代理人 (${assignment.displayName})`;
+            role = '代理';
+            kind = 'proxy';
+            attendanceStatus = 'checked_in';
+          }
+        }
+      }
+
       return {
         id: seat.id,
         seatKey: seat.seatKey,
@@ -171,11 +198,11 @@ function buildSeatMap(record: PublicWeeklyEventRecord, seatMap: PublicSeatMapRec
         col: seat.col,
         zone: seat.zone,
         position: seat.position,
-        kind: seat.kind,
+        kind,
         label: seat.label,
-        occupantName: assignment?.displayName ?? null,
-        role: assignment?.role ?? null,
-        attendanceStatus: assignment?.status ?? null,
+        occupantName,
+        role,
+        attendanceStatus,
         headcount: normalizeHeadcount(assignment?.headcount),
         pollOptionId:
           (assignment?.memberId ? byMember.get(assignment.memberId) : null) ??

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Minus, Plus, UsersRound, X } from 'lucide-react';
+import { CheckCircle2, Minus, Plus, UsersRound, X, Loader2 } from 'lucide-react';
 import type { PublicSeatDTO, PublicWeeklyEventDTO } from '@/application/events/dto';
 import { PublicSeatMap } from '@/components/public-seat-map';
+import { CHAPTER_MEMBER_DIRECTORY } from '@/lib/chapter-members';
 
 // Recompute the summary/zone counters locally so optimistic toggles update the
 // whole panel instantly; the 5s poll later reconciles with the server truth.
@@ -41,6 +42,8 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
   const [pendingSeatIds, setPendingSeatIds] = useState<Set<string>>(() => new Set());
   const [manageSeatId, setManageSeatId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
+  const [preLeaveOpen, setPreLeaveOpen] = useState(false);
+  const [submittingPreLeave, setSubmittingPreLeave] = useState(false);
   const pendingRef = useRef(pendingSeatIds);
 
   useEffect(() => {
@@ -129,6 +132,26 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
         next.delete(seatId);
         return next;
       });
+    }
+  }
+
+  async function submitPreLeave(memberName: string, status: 'present' | 'absent' | 'proxy', proxyName?: string) {
+    setSubmittingPreLeave(true);
+    try {
+      const response = await fetch(`/api/public/events/${event.slug}/pre-leave`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberName, status, proxyName }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message ?? '登記請假失敗。');
+      setEvent(data);
+      setMessage({ text: status === 'present' ? '已取消請假登記。' : '請假登記已成功送出！', tone: 'ok' });
+      setPreLeaveOpen(false);
+    } catch (error) {
+      throw error;
+    } finally {
+      setSubmittingPreLeave(false);
     }
   }
 
@@ -222,6 +245,13 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
                 style={{ width: `${checkedInRate}%` }}
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setPreLeaveOpen(true)}
+              className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-foreground/15 bg-background/50 hover:bg-foreground/[0.04] px-4 py-2.5 text-xs font-black text-foreground transition"
+            >
+              成員請假 / 代理登記
+            </button>
           </div>
         </div>
 
@@ -288,6 +318,159 @@ export function PublicAttendanceLivePanel({ initialEvent }: { initialEvent: Publ
           {message.text}
         </div>
       ) : null}
+
+      {preLeaveOpen ? (
+        <PreLeaveDialog
+          onClose={() => setPreLeaveOpen(false)}
+          onSubmit={submitPreLeave}
+          submitting={submittingPreLeave}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function PreLeaveDialog({
+  onClose,
+  onSubmit,
+  submitting,
+}: {
+  onClose: () => void;
+  onSubmit: (memberName: string, status: 'present' | 'absent' | 'proxy', proxyName?: string) => Promise<void>;
+  submitting: boolean;
+}) {
+  const [selectedMember, setSelectedMember] = useState('');
+  const [status, setStatus] = useState<'absent' | 'proxy' | 'present'>('absent');
+  const [proxyName, setProxyName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMember) {
+      setError('請選擇會員姓名');
+      return;
+    }
+    if (status === 'proxy' && !proxyName.trim()) {
+      setError('請輸入代理人姓名');
+      return;
+    }
+    setError(null);
+    try {
+      await onSubmit(selectedMember, status, status === 'proxy' ? proxyName : undefined);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '提交登記失敗，請重試。');
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 backdrop-blur-sm sm:items-center no-print"
+      onClick={onClose}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm rounded-2xl border border-foreground/10 bg-background p-5 shadow-2xl space-y-4"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-[0.2em] text-foreground/35">Member Service</div>
+            <h3 className="mt-1 text-lg font-black text-foreground">成員預先請假 / 代理登記</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-foreground/40 transition hover:bg-foreground/5 hover:text-foreground/70"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {error ? (
+          <div className="rounded-lg border border-red-500/25 bg-red-500/10 p-2.5 text-xs font-bold text-red-700 dark:text-red-300">
+            {error}
+          </div>
+        ) : null}
+
+        <div className="space-y-3 text-xs font-bold">
+          <label className="block">
+            <span className="text-foreground/50">會員姓名</span>
+            <select
+              value={selectedMember}
+              onChange={(e) => setSelectedMember(e.target.value)}
+              className="mt-1.5 w-full rounded-lg border border-foreground/15 bg-background px-3 py-2.5 text-xs font-black outline-none focus:border-foreground/40 transition-colors"
+            >
+              <option value="">-- 請選擇您的姓名 --</option>
+              {CHAPTER_MEMBER_DIRECTORY.map((m) => (
+                <option key={m.name} value={m.name}>
+                  {m.name} ({m.adminGroup ?? '無分組'})
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="block">
+            <span className="text-foreground/50">登記項目</span>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setStatus('absent')}
+                className={`rounded-lg border px-3 py-2 text-center transition ${
+                  status === 'absent'
+                    ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300 font-black'
+                    : 'border-foreground/10 hover:bg-foreground/5 text-foreground/60'
+                }`}
+              >
+                請假無代理
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('proxy')}
+                className={`rounded-lg border px-3 py-2 text-center transition ${
+                  status === 'proxy'
+                    ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 font-black'
+                    : 'border-foreground/10 hover:bg-foreground/5 text-foreground/60'
+                }`}
+              >
+                安排代理人
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('present')}
+                className={`rounded-lg border px-3 py-2 text-center transition ${
+                  status === 'present'
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-black'
+                    : 'border-foreground/10 hover:bg-foreground/5 text-foreground/60'
+                }`}
+              >
+                取消請假
+              </button>
+            </div>
+          </div>
+
+          {status === 'proxy' ? (
+            <label className="block">
+              <span className="text-foreground/50">代理人姓名</span>
+              <input
+                type="text"
+                placeholder="例如：王大同"
+                value={proxyName}
+                onChange={(e) => setProxyName(e.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-xs font-black outline-none focus:border-indigo-500/40 transition-colors"
+              />
+            </label>
+          ) : null}
+        </div>
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-black text-background transition hover:opacity-90 disabled:opacity-50"
+        >
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          確認送出
+        </button>
+      </form>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 async function main() {
   const session = await prisma.meetingSession.findUnique({
-    where: { weekId: '2026-07-09' },
+    where: { weekId: '2026-08-20' },
     include: {
       seatMaps: {
         include: {
@@ -16,7 +16,7 @@ async function main() {
     }
   });
   if (!session || session.seatMaps.length === 0) {
-    console.log('No seat map found for 2026-07-09');
+    console.log('No seat map found for 2026-08-20');
     return;
   }
   const seatMap = session.seatMaps[0];
