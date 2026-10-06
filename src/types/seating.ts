@@ -50,6 +50,8 @@ export interface ChapterMember {
   adminGroup?: string;
   roles: string[];
   note?: string;
+  /** 其他會出現在外部報表的姓名，例如 BNI Connect 上的舊名。 */
+  aliases?: string[];
 }
 
 export type ValidationSeverity = 'error' | 'warning' | 'info';

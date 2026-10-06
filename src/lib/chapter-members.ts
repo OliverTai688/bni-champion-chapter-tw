@@ -20,7 +20,7 @@ export const CHAPTER_MEMBER_DIRECTORY: ChapterMember[] = [
   { name: '林道元', adminGroup: '第 3 組', roles: ['導師'] },
   { name: '陳宜均', adminGroup: '第 3 組', roles: ['會員'] },
   { name: '黃嘉琪', adminGroup: '第 3 組', roles: ['會員'] },
-  { name: '葉心琳', adminGroup: '第 3 組', roles: ['會員'] },
+  { name: '葉心琳', adminGroup: '第 3 組', roles: ['會員'], aliases: ['葉宸妡'] },
   { name: '邱柏瀚', adminGroup: '第 4 組', roles: ['導師', '執事', '邀賓英雄'] },
   { name: '戴嘉慧', adminGroup: '第 4 組', roles: ['執事', '邀賓英雄'] },
   { name: '王柏詠', adminGroup: '第 4 組', roles: ['導師'] },
@@ -42,5 +42,8 @@ export const CHAPTER_MEMBER_DIRECTORY: ChapterMember[] = [
   { name: '陳平', roles: ['會員'], note: '新人（商空），導師蘇冠霖' },
 ];
 
+
+/** 已離會的會員。名冊同步時會標記為停用，歷史紀錄保留。 */
+export const FORMER_CHAPTER_MEMBER_NAMES: string[] = ['劉庭羽', '簡偉志'];
 
 export const CHAPTER_MEMBER_NAMES = CHAPTER_MEMBER_DIRECTORY.map((member) => member.name);

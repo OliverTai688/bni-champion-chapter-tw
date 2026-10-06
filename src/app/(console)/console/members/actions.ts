@@ -117,17 +117,19 @@ export async function setMemberCategoryAction(_prev: ActionState, formData: Form
 export async function syncMemberDirectoryAction(): Promise<ActionState> {
   try {
     const viewer = await requireLeader();
-    const { created, updated } = await syncMemberDirectory();
+    const { created, updated, deactivated } = await syncMemberDirectory();
     await logOperation({
       actorRole: 'admin',
       actorName: viewer.leaderName,
       action: 'member_directory_synced',
       targetType: 'Member',
-      metadata: { created, updated },
+      metadata: { created, updated, deactivated },
     });
     revalidateMembers();
-    if (created === 0 && updated === 0) return ok('同步完成，名冊已經是最新的，沒有需要新增或更新的會員。');
-    return ok(`同步完成：新增 ${created} 位、更新 ${updated} 位。`);
+    if (created === 0 && updated === 0 && deactivated === 0) {
+      return ok('同步完成，名冊已經是最新的，沒有需要新增或更新的會員。');
+    }
+    return ok(`同步完成：新增 ${created} 位、更新 ${updated} 位${deactivated > 0 ? `、標記離會 ${deactivated} 位` : ''}。`);
   } catch (error) {
     return fail(error);
   }
