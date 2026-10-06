@@ -4,8 +4,10 @@ import { getAttendance } from '@/server/tbx/participation';
 import { isLeader } from '@/server/tbx/viewer';
 
 function cell(value: string | number | null | undefined) {
-  const text = value === null || value === undefined ? '' : String(value);
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  let text = value === null || value === undefined ? '' : String(value);
+  // Names typed on the public check-in page must not run as spreadsheet formulas.
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+  return /[",\n']/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 export async function GET(_request: Request, context: { params: Promise<{ eventKey: string }> }) {

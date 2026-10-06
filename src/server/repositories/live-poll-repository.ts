@@ -400,7 +400,9 @@ export async function closeAdminPoll(weekId: string, pollId: string) {
 }
 
 function csvCell(value: unknown) {
-  const text = value === null || value === undefined ? '' : String(value);
+  let text = value === null || value === undefined ? '' : String(value);
+  // Free text (好話) could start with a spreadsheet formula; prefix it so Excel shows it as text.
+  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return `"${text.replaceAll('"', '""')}"`;
 }
 
@@ -432,6 +434,7 @@ export async function exportAdminPollCsv(weekId: string, pollId: string) {
             select: {
               id: true,
               anonymousVoterHash: true,
+              comment: true,
               submittedAt: true,
             },
           },
@@ -461,6 +464,8 @@ export async function exportAdminPollCsv(weekId: string, pollId: string) {
       'voteId',
       'anonymousVoterHash',
       'submittedAt',
+      // 好話: kept anonymous, the voter is never named.
+      'comment',
     ]),
   ];
 
@@ -481,6 +486,7 @@ export async function exportAdminPollCsv(weekId: string, pollId: string) {
       metadata.row,
       metadata.col,
       option.votes.length,
+      null,
       null,
       null,
       null,
@@ -505,13 +511,15 @@ export async function exportAdminPollCsv(weekId: string, pollId: string) {
         vote.id,
         vote.anonymousVoterHash,
         vote.submittedAt.toISOString(),
+        vote.comment,
       ]));
     }
   }
 
   return {
     filename: `${weekId}-${poll.title}-poll-export.csv`,
-    csv: `${lines.join('\n')}\n`,
+    // BOM so Excel opens the Chinese text as UTF-8.
+    csv: `\uFEFF${lines.join('\n')}\n`,
   };
 }
 
