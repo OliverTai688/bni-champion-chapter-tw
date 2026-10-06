@@ -11,7 +11,11 @@ function getUpcomingThursdays(count = 5): string[] {
   for (let i = 0; i < 45; i++) {
     const d = new Date(current.getTime() + i * 24 * 60 * 60 * 1000);
     if (d.getDay() === 4) { // Thursday
-      dates.push(d.toISOString().split('T')[0]);
+      // Local calendar date; toISOString() is UTC and shifts to Wednesday before 08:00 in UTC+8.
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      dates.push(`${yyyy}-${mm}-${dd}`);
       if (dates.length >= count) break;
     }
   }

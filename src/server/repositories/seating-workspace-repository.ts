@@ -146,7 +146,15 @@ export async function saveSeatingDraft(
     },
   });
 
-  const nextVersion = (existingDraft?.revisions[0]?.version ?? 0) + 1;
+  // Readers pick the highest version across all seat maps of the session,
+  // so a new save must outrank seed/template seat maps, not just its own revisions.
+  const latestSessionSeatMap = await prisma.seatMap.findFirst({
+    where: { sessionId: session.id },
+    orderBy: { version: 'desc' },
+    select: { version: true },
+  });
+  const nextVersion =
+    Math.max(existingDraft?.revisions[0]?.version ?? 0, latestSessionSeatMap?.version ?? 0) + 1;
   const seatMap = existingDraft
     ? await prisma.seatMap.update({
         where: { id: existingDraft.id },

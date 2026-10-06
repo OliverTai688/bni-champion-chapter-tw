@@ -44,12 +44,12 @@ function seatKind(seat) {
   return 'member';
 }
 
-const { LAYOUT_0827: LAYOUT_0813, ROSTER_0827: ROSTER_0813 } = loadTsModule('src/lib/layout-0827.ts');
+const { LAYOUT_1001: LAYOUT_0813, ROSTER_1001: ROSTER_0813 } = loadTsModule('src/lib/layout-1001.ts');
 
 const meetingSession = {
-  weekId: '2026-08-27',
-  date: '2026-08-27T00:00:00.000Z',
-  title: '115/08/27 座位表',
+  weekId: '2026-10-01',
+  date: '2026-10-01T00:00:00.000Z',
+  title: '115/10/01 座位表',
   chapterName: 'BNI 長冠軍分會',
   meetingLabel: '每週例會排座',
   source: 'seed',
@@ -193,13 +193,21 @@ async function writeSeed() {
         create: {
           displayName,
           roles: [],
-          metadata: { importedFrom: 'layout-0827' },
+          metadata: { importedFrom: 'layout-1001' },
         },
         update: {
           isActive: true,
         },
       });
     }
+
+    // Seed must outrank any browser-draft already saved for this session.
+    const latestSeatMap = await prisma.seatMap.findFirst({
+      where: { sessionId: session.id },
+      orderBy: { version: 'desc' },
+      select: { version: true },
+    });
+    const writeVersion = (latestSeatMap?.version ?? 0) + 1;
 
     const oldSeatMaps = await prisma.seatMap.findMany({
       where: {
@@ -221,6 +229,7 @@ async function writeSeed() {
       data: {
         sessionId: session.id,
         ...seatMap,
+        version: writeVersion,
       },
     });
 
@@ -261,6 +270,7 @@ async function writeSeed() {
       data: {
         seatMapId: createdSeatMap.id,
         ...revision,
+        version: writeVersion,
         reason: 'Initial write import for current seed layout.',
       },
     });
