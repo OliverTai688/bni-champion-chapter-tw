@@ -1,15 +1,9 @@
-import { auth } from '@/auth';
-import { cookies } from 'next/headers';
-import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
+import { hasLeaderAccess } from '@/server/auth/access';
 import { createEventSeatMap, listAdminEventSessions, listSeatTemplates } from '@/server/repositories/admin-event-sessions-repository';
 import type { SeatMapSourceKind } from '@/server/repositories/admin-event-sessions-repository';
 
 async function hasWriteAccess() {
-  const session = await auth();
-  if (session?.user) return true;
-
-  const cookieStore = await cookies();
-  return verifyAdminAccessToken(cookieStore.get(ADMIN_ACCESS_COOKIE)?.value);
+  return hasLeaderAccess();
 }
 
 function unauthorized() {

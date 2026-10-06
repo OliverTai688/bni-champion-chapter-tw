@@ -1,19 +1,16 @@
 import 'server-only';
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
-import { auth } from '@/auth';
-import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
+import { findMemberByEmail, getGoogleIdentity, getLeaderAccess } from '@/server/auth/access';
+import { sign as signValue } from '@/server/auth/secrets';
 import { prisma } from '@/server/db/prisma';
 
 export const MEMBER_COOKIE = 'tbx-member';
-
-function memberSecret() {
-  return process.env.AUTH_SECRET ?? 'local-tbx-member';
-}
+export const MEMBER_COOKIE_MAX_AGE = 60 * 60 * 24 * 90;
 
 function sign(memberId: string) {
-  return createHmac('sha256', memberSecret()).update(memberId).digest('hex').slice(0, 32);
+  return signValue('member-session', memberId).slice(0, 32);
 }
 
 export function createMemberToken(memberId: string) {
@@ -34,26 +31,30 @@ export interface Viewer {
   /** Leadership access: Google sign-in or the admin access cookie (same rule as the existing write APIs). */
   leader: boolean;
   leaderName: string | null;
-  /** Member identity chosen on /login. Interim: not verified against a real login yet. */
+  /** Verified member identity: a Google account whose e-mail matches the member, or a leader-issued login link. */
   member: { id: string; displayName: string; industry: string | null; adminGroup: string | null } | null;
-  /** Leadership roles whose term covers today. Informational until member login is verified. */
+  /** Leadership roles whose term covers today. */
   activeRoles: string[];
 }
 
 export async function isLeader() {
+  return Boolean(await getLeaderAccess());
+}
+
+async function resolveMemberId() {
   const cookieStore = await cookies();
-  if (verifyAdminAccessToken(cookieStore.get(ADMIN_ACCESS_COOKIE)?.value)) return true;
-  const session = await auth();
-  return Boolean(session?.user);
+  const fromCookie = readMemberToken(cookieStore.get(MEMBER_COOKIE)?.value);
+  if (fromCookie) return fromCookie;
+  const google = await getGoogleIdentity();
+  if (!google) return null;
+  return (await findMemberByEmail(google.email))?.id ?? null;
 }
 
 export async function getViewer(): Promise<Viewer> {
-  const cookieStore = await cookies();
-  const session = await auth();
-  const adminCookie = verifyAdminAccessToken(cookieStore.get(ADMIN_ACCESS_COOKIE)?.value);
-  const leader = adminCookie || Boolean(session?.user);
+  const access = await getLeaderAccess();
+  const leader = Boolean(access);
 
-  const memberId = readMemberToken(cookieStore.get(MEMBER_COOKIE)?.value);
+  const memberId = await resolveMemberId();
   let member: Viewer['member'] = null;
   let activeRoles: string[] = [];
 
@@ -83,7 +84,7 @@ export async function getViewer(): Promise<Viewer> {
 
   return {
     leader,
-    leaderName: session?.user?.name ?? (adminCookie ? '領導團隊' : null),
+    leaderName: access?.name ?? null,
     member,
     activeRoles,
   };
@@ -98,6 +99,6 @@ export async function requireLeader() {
 
 export async function requireMember() {
   const viewer = await getViewer();
-  if (!viewer.member) throw new Error('請先選擇你的會員身份。');
+  if (!viewer.member) throw new Error('請先登入會員身份。');
   return viewer as Viewer & { member: NonNullable<Viewer['member']> };
 }

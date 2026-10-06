@@ -565,3 +565,37 @@ model EventSeatPlan {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 }
+
+// ---------------------------------------------------------------------------
+// Access (release hardening). Additive.
+// ---------------------------------------------------------------------------
+
+// One-time login link a leader hands to a member (LINE, e-mail). Only the
+// SHA-256 of the token is stored; the link itself is shown once.
+model MemberLoginLink {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  memberId  String    @db.ObjectId
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdBy String?
+  createdAt DateTime  @default(now())
+
+  @@index([memberId])
+}
+
+// Bearer tokens for the AI / automation API (/api/v1/ai/*, /api/mcp).
+model ApiToken {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  prefix     String
+  tokenHash  String    @unique
+  scopes     String[]
+  createdBy  String?
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([revokedAt])
+}

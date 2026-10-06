@@ -1,34 +1,52 @@
 import 'server-only';
 
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
+import { sign } from '@/server/auth/secrets';
 
 export const ADMIN_ACCESS_COOKIE = 'take-seat-admin-access';
+export const ADMIN_ACCESS_TTL_SECONDS = 60 * 60 * 12;
 
-const TEMPORARY_ADMIN_PASSWORD = 'Bnibni';
-
+/** The shared leader password. There is no built-in fallback: unset means password login is off. */
 function adminPassword() {
-  return process.env.ADMIN_PASSWORD ?? TEMPORARY_ADMIN_PASSWORD;
+  const value = process.env.ADMIN_PASSWORD?.trim();
+  return value ? value : null;
 }
 
-function hashValue(value: string) {
-  const secret = process.env.AUTH_SECRET ?? 'local-admin-access';
-  return createHash('sha256').update(`${value}:${secret}`).digest('hex');
+export function isAdminPasswordConfigured() {
+  return adminPassword() !== null;
 }
 
-export function createAdminAccessToken() {
-  return hashValue(adminPassword());
+function safeEqual(a: string, b: string) {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+// Binding the token to the password means changing ADMIN_PASSWORD signs every device out.
+function passwordFingerprint(password: string) {
+  return sign('admin-password', password).slice(0, 16);
 }
 
 export function verifyAdminPassword(password: string) {
-  const expected = Buffer.from(hashValue(adminPassword()));
-  const actual = Buffer.from(hashValue(password));
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
+  const expected = adminPassword();
+  if (!expected || !password) return false;
+  return safeEqual(sign('admin-password-check', expected), sign('admin-password-check', password));
 }
 
-export function verifyAdminAccessToken(token: string | undefined) {
-  if (!token) return false;
+/** `<issuedAtSeconds>.<signature>`; expires after ADMIN_ACCESS_TTL_SECONDS. */
+export function createAdminAccessToken(now = Date.now()) {
+  const password = adminPassword();
+  if (!password) throw new Error('ADMIN_PASSWORD is not set.');
+  const issuedAt = Math.floor(now / 1000).toString();
+  return `${issuedAt}.${sign('admin-access', `${issuedAt}:${passwordFingerprint(password)}`)}`;
+}
 
-  const expected = Buffer.from(createAdminAccessToken());
-  const actual = Buffer.from(token);
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
+export function verifyAdminAccessToken(token: string | undefined, now = Date.now()) {
+  const password = adminPassword();
+  if (!token || !password) return false;
+  const [issuedAt, signature] = token.split('.');
+  if (!issuedAt || !signature || !/^\d+$/.test(issuedAt)) return false;
+  const age = Math.floor(now / 1000) - Number(issuedAt);
+  if (age < 0 || age > ADMIN_ACCESS_TTL_SECONDS) return false;
+  return safeEqual(signature, sign('admin-access', `${issuedAt}:${passwordFingerprint(password)}`));
 }

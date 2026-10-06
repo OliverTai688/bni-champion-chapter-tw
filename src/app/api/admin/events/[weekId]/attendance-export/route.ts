@@ -1,17 +1,11 @@
-import { cookies } from 'next/headers';
-import { auth } from '@/auth';
-import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
+import { hasLeaderAccess } from '@/server/auth/access';
 import { toAdminSeatingWorkspaceDTO } from '@/application/seating/mappers';
 import { findLatestSeatMapByWeekId } from '@/server/repositories/seating-workspace-repository';
 import { buildEventAttendanceReport } from '@/server/attendance/attendance-report';
 import { buildEventAttendanceWorkbook } from '@/server/attendance/attendance-xlsx';
 
 async function hasAdminAccess() {
-  const session = await auth();
-  if (session?.user) return true;
-
-  const cookieStore = await cookies();
-  return verifyAdminAccessToken(cookieStore.get(ADMIN_ACCESS_COOKIE)?.value);
+  return hasLeaderAccess();
 }
 
 function unauthorized() {

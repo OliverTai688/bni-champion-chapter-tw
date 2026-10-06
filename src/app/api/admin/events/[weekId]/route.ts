@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { getLeaderAccess } from '@/server/auth/access';
 import { normalizePublishAction } from '@/application/events/publication';
 import { getEventPublicationByWeekId, updateEventPublication } from '@/server/repositories/event-publication-repository';
 
@@ -12,13 +12,9 @@ function unauthorized() {
   );
 }
 
-function actorName(session: { user?: { name?: string | null } }) {
-  return session.user?.name ?? 'authenticated-admin';
-}
-
 export async function GET(_request: Request, context: RouteContext<'/api/admin/events/[weekId]'>) {
-  const session = await auth();
-  if (!session?.user) return unauthorized();
+  const access = await getLeaderAccess();
+  if (!access) return unauthorized();
 
   const { weekId } = await context.params;
   const publication = await getEventPublicationByWeekId(weekId);
@@ -36,15 +32,15 @@ export async function GET(_request: Request, context: RouteContext<'/api/admin/e
 }
 
 export async function PATCH(request: Request, context: RouteContext<'/api/admin/events/[weekId]'>) {
-  const session = await auth();
-  if (!session?.user) return unauthorized();
+  const access = await getLeaderAccess();
+  if (!access) return unauthorized();
 
   const { weekId } = await context.params;
 
   try {
     const body = await request.json();
     const action = normalizePublishAction(body?.action);
-    const publication = await updateEventPublication(weekId, action, actorName(session));
+    const publication = await updateEventPublication(weekId, action, access.name);
     if (!publication) {
       return Response.json(
         {

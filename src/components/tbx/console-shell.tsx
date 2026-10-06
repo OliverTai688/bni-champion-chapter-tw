@@ -70,7 +70,7 @@ export function ConsoleRail({ leaderName }: { leaderName: string | null }) {
 }
 
 /** Shown instead of the console when the visitor has no leadership access. */
-export function ConsoleGate() {
+export function ConsoleGate({ googleEmail }: { googleEmail?: string | null }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -86,7 +86,7 @@ export function ConsoleGate() {
     });
     setLoading(false);
     if (!response.ok) {
-      setError('密碼不正確，請再試一次。');
+      setError(response.status === 503 ? '後台密碼尚未設定，請改用 Google 登入。' : '密碼不正確，請再試一次。');
       return;
     }
     window.location.reload();
@@ -116,6 +116,11 @@ export function ConsoleGate() {
           />
         </label>
         {error ? <p className="tb-form-error">{error}</p> : null}
+        {googleEmail ? (
+          <p className="tb-form-error">
+            Google 帳號 {googleEmail} 沒有領導團隊權限。請主席在「設定 › 職位與任期」加上你的任期，並在會員檔案登記這個 Email。
+          </p>
+        ) : null}
         <button type="submit" className="tb-btn tb-btn-gold" disabled={loading || !password}>
           {loading ? '驗證中…' : '進入中控'}
         </button>

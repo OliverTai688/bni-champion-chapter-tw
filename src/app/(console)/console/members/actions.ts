@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { fail, ok, text, type ActionState } from '@/server/tbx/action';
+import { headers } from 'next/headers';
+import { fail, isObjectId, ok, text, type ActionState } from '@/server/tbx/action';
 import { logOperation } from '@/server/tbx/log';
 import {
   createMember,
@@ -10,6 +11,7 @@ import {
   setMemberCategory,
   updateMember,
 } from '@/server/tbx/member-admin';
+import { LOGIN_LINK_TTL_DAYS, issueMemberLoginLink } from '@/server/tbx/member-login';
 import { syncMemberDirectory } from '@/server/tbx/members';
 import { requireLeader } from '@/server/tbx/viewer';
 
@@ -130,6 +132,36 @@ export async function syncMemberDirectoryAction(): Promise<ActionState> {
       return ok('同步完成，名冊已經是最新的，沒有需要新增或更新的會員。');
     }
     return ok(`同步完成：新增 ${created} 位、更新 ${updated} 位${deactivated > 0 ? `、標記離會 ${deactivated} 位` : ''}。`);
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export type LoginLinkState = { ok: boolean; message: string; link?: string } | null;
+
+/** Leaders hand this link to a member who has no Google e-mail on file. Shown once. */
+export async function issueLoginLinkAction(_prev: LoginLinkState, formData: FormData): Promise<LoginLinkState> {
+  try {
+    const viewer = await requireLeader();
+    const memberId = text(formData, 'memberId');
+    if (!isObjectId(memberId)) throw new Error('找不到這位會員。');
+    const { token, displayName } = await issueMemberLoginLink(memberId, viewer.leaderName);
+    await logOperation({
+      actorRole: 'admin',
+      actorName: viewer.leaderName,
+      action: 'member_login_link_issued',
+      targetType: 'Member',
+      targetId: memberId,
+      metadata: { displayName },
+    });
+    const headerStore = await headers();
+    const host = headerStore.get('x-forwarded-host') ?? headerStore.get('host') ?? 'localhost:3000';
+    const proto = headerStore.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+    return {
+      ok: true,
+      message: `已產生 ${displayName} 的登入連結，${LOGIN_LINK_TTL_DAYS} 天內有效，只能用一次。舊的連結已失效。`,
+      link: `${proto}://${host}/login/link?t=${token}`,
+    };
   } catch (error) {
     return fail(error);
   }

@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { getLeaderAccess } from '@/server/auth/access';
 import { prisma } from '@/server/db/prisma';
 import { Prisma } from '@prisma/client';
 
@@ -13,8 +13,8 @@ function unauthorized() {
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ weekId: string }> }) {
-  const session = await auth();
-  if (!session?.user) return unauthorized();
+  const access = await getLeaderAccess();
+  if (!access) return unauthorized();
 
   const { weekId } = await context.params;
   const body = await request.json().catch(() => null);
@@ -67,7 +67,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ weekI
       data: {
         sessionId: meetingSession.id,
         actorRole: 'admin',
-        actorName: session.user.name ?? 'admin',
+        actorName: access.name,
         action: 'admin_attendance_overrides_updated',
         targetType: 'MeetingSession',
         targetId: meetingSession.id,

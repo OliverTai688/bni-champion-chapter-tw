@@ -1,15 +1,13 @@
 import 'server-only';
 
-import { cookies } from 'next/headers';
-import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
+import { hasLeaderAccess } from '@/server/auth/access';
 import {
   createAdminEventSessionFromCurrentTemplate,
   listAdminEventSessions,
 } from '@/server/repositories/admin-event-sessions-repository';
 
 async function hasAdminAccess() {
-  const cookieStore = await cookies();
-  return verifyAdminAccessToken(cookieStore.get(ADMIN_ACCESS_COOKIE)?.value);
+  return hasLeaderAccess();
 }
 
 function unauthorized() {

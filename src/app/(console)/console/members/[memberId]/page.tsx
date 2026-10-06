@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Star, TrafficCone } from 'lucide-react';
 import { ActionForm, ConfirmSubmit, SubmitButton } from '@/components/tbx/client';
 import { LeaderOnlyNotice } from '@/components/tbx/members/leader-only';
+import { LoginLinkPanel } from '@/components/tbx/members/login-link-panel';
 import { EditMemberButton } from '@/components/tbx/members/member-dialogs';
 import { toMemberFormValues } from '@/components/tbx/members/member-values';
 import { Card, Empty, PageHeader, Stat, StatusChip } from '@/components/tbx/ui';
@@ -212,6 +213,12 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ m
               </Link>
             </div>
           </Card>
+
+          {isChapterMember && member.isActive ? (
+            <Card title="會員登入">
+              <LoginLinkPanel memberId={member.id} hasEmail={Boolean(member.email)} />
+            </Card>
+          ) : null}
         </div>
       </div>
 

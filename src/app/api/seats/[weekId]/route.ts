@@ -1,6 +1,4 @@
-import { auth } from '@/auth';
-import { cookies } from 'next/headers';
-import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
+import { hasLeaderAccess, getLeaderAccess } from '@/server/auth/access';
 import { toAdminSeatingWorkspaceDTO, toPublicSeatMapSummaryDTO } from '@/application/seating/mappers';
 import { normalizeSaveSeatingDraftRequest } from '@/application/seating/save-draft';
 import { findLatestSeatMapByWeekId, saveSeatingDraft } from '@/server/repositories/seating-workspace-repository';
@@ -16,11 +14,7 @@ function unauthorized() {
 }
 
 async function hasAdminAccess() {
-  const session = await auth();
-  if (session?.user) return true;
-
-  const cookieStore = await cookies();
-  return verifyAdminAccessToken(cookieStore.get(ADMIN_ACCESS_COOKIE)?.value);
+  return hasLeaderAccess();
 }
 
 export async function GET(request: Request, context: RouteContext<'/api/seats/[weekId]'>) {
@@ -50,8 +44,8 @@ export async function GET(request: Request, context: RouteContext<'/api/seats/[w
 
 export async function PATCH(request: Request, context: RouteContext<'/api/seats/[weekId]'>) {
   const { weekId } = await context.params;
-  const session = await auth();
-  if (!session?.user) return unauthorized();
+  const access = await getLeaderAccess();
+  if (!access) return unauthorized();
 
   try {
     const draft = normalizeSaveSeatingDraftRequest(await request.json());

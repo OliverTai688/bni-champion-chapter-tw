@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ConsoleGate, ConsoleRail } from '@/components/tbx/console-shell';
+import { getGoogleIdentity } from '@/server/auth/access';
 import { getViewer } from '@/server/tbx/viewer';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
   if (!viewer.leader) {
     return (
       <div className="tbx min-h-screen">
-        <ConsoleGate />
+        <ConsoleGate googleEmail={(await getGoogleIdentity())?.email ?? null} />
       </div>
     );
   }

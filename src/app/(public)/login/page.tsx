@@ -1,47 +1,85 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listChapterMembers } from '@/server/tbx/members';
+import { LogIn } from 'lucide-react';
+import { getGoogleIdentity } from '@/server/auth/access';
 import { getViewer } from '@/server/tbx/viewer';
-import { clearMemberAction } from './actions';
-import { MemberPicker } from './member-picker';
+import { clearMemberAction, googleSignInAction } from './actions';
 
-export const metadata: Metadata = { title: '選擇會員身份 | 長冠軍工具箱' };
+export const metadata: Metadata = { title: '會員登入 | 長冠軍工具箱' };
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
-  const { next } = await searchParams;
+const ERROR_TEXT: Record<string, string> = {
+  AccessDenied: '這個 Google 帳號還沒有登記在會員名冊。請幹部在你的會員檔案填上這個 Email，或請幹部傳一個登入連結給你。',
+  Configuration: 'Google 登入暫時無法使用，請改用幹部提供的登入連結。',
+};
+
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
+  const { next, error } = await searchParams;
   const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/me';
-  const [members, viewer] = await Promise.all([listChapterMembers(), getViewer()]);
+  const [viewer, google] = await Promise.all([getViewer(), getGoogleIdentity()]);
+  const errorText = error ? ERROR_TEXT[error] ?? '登入沒有成功，請再試一次，或請幹部傳登入連結給你。' : null;
 
   return (
     <main className="mx-auto flex w-full max-w-[520px] flex-col gap-5 px-4 py-8">
       <div>
         <div className="tb-eyebrow">長冠軍工具箱</div>
-        <h1 className="mt-1 text-2xl font-bold">你是哪一位會員？</h1>
-        <p className="mt-1 text-sm text-tb-muted">選擇後，這支手機會記住你的身份，之後直接看到自己的座位與燈號。</p>
+        <h1 className="mt-1 text-2xl font-bold">會員登入</h1>
+        <p className="mt-1 text-sm text-tb-muted">登入後可以看自己的座位、燈號與活動，並修改自己的商務檔案。</p>
       </div>
+
+      {errorText ? <p className="tb-form-error">{errorText}</p> : null}
 
       {viewer.member ? (
         <div className="tb-banner tb-banner-ok">
           <div className="min-w-0 flex-1">
-            <p className="font-bold">目前身份：{viewer.member.displayName}</p>
-            <p className="text-sm text-tb-muted">要換人使用，可以先清除身份。</p>
+            <p className="font-bold">已登入：{viewer.member.displayName}</p>
+            <p className="text-sm text-tb-muted">{google ? `Google 帳號 ${google.email}` : '這支手機已記住你的身份。'}</p>
           </div>
           <Link href={safeNext} className="tb-btn tb-btn-gold">
             繼續
           </Link>
           <form action={clearMemberAction}>
             <button type="submit" className="tb-btn">
-              清除身份
+              登出
             </button>
           </form>
         </div>
-      ) : null}
+      ) : (
+        <>
+          <section className="tb-card">
+            <div className="tb-card-head">
+              <h2>用 Google 登入</h2>
+            </div>
+            <div className="tb-card-body flex flex-col gap-3">
+              <p className="text-sm text-tb-muted">使用你登記在會員名冊上的 Email 對應的 Google 帳號。</p>
+              <form action={googleSignInAction}>
+                <input type="hidden" name="next" value={safeNext} />
+                <button type="submit" className="tb-btn tb-btn-gold tb-btn-lg w-full">
+                  <LogIn className="h-4 w-4" aria-hidden />
+                  用 Google 登入
+                </button>
+              </form>
+              {google ? (
+                <p className="text-xs text-tb-faint">
+                  目前的 Google 帳號 {google.email} 沒有對應到會員。可以換一個帳號，或使用登入連結。
+                </p>
+              ) : null}
+            </div>
+          </section>
 
-      <MemberPicker members={members.map((member) => ({ id: member.id, name: member.displayName, group: member.adminGroup }))} next={safeNext} />
+          <section className="tb-card">
+            <div className="tb-card-head">
+              <h2>用登入連結</h2>
+            </div>
+            <div className="tb-card-body">
+              <p className="text-sm text-tb-muted">
+                沒有 Google 帳號，或 Email 還沒登記的會員，請向幹部索取個人登入連結。連結只能用一次，{' '}
+                打開後按「確認登入」即可。
+              </p>
+            </div>
+          </section>
+        </>
+      )}
 
-      <p className="text-xs text-tb-faint">
-        過渡期做法：目前只靠選擇姓名，尚未驗證是不是本人，所以會員區只放不敏感的資料。之後會改成正式登入。
-      </p>
       <Link href="/console" className="text-center text-sm text-tb-muted">
         我是幹部，前往領導團隊中控
       </Link>

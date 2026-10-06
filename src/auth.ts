@@ -1,33 +1,21 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
+import { isAllowlistedLeaderEmail } from '@/server/auth/allowlist';
+import { prisma } from '@/server/db/prisma';
 import { recordGoogleLogin } from '@/server/repositories/admin-login-records-repository';
 
-const BUILT_IN_OWNER_EMAILS = ['taioliver688@gmail.com'];
 const LOGIN_RECORD_TIMEOUT_MS = 2500;
 
-function allowedEmails() {
-  return (process.env.AUTH_ALLOWED_EMAILS ?? '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function allowedDomains() {
-  return (process.env.AUTH_ALLOWED_DOMAIN ?? '')
-    .split(',')
-    .map((domain) => domain.trim().toLowerCase().replace(/^@/, ''))
-    .filter(Boolean);
-}
-
-function isAllowedEmail(email: string) {
-  if (BUILT_IN_OWNER_EMAILS.includes(email)) return true;
-
-  const emails = allowedEmails();
-  const domains = allowedDomains();
-  if (domains.length === 0 && emails.length === 0) return true;
-  if (emails.includes(email)) return true;
-
-  return domains.some((domain) => email.endsWith(`@${domain}`));
+/**
+ * Google sign-in is open to allowlisted leaders and to active members whose
+ * e-mail is on file. Everyone else is refused, even when the allowlist is empty.
+ */
+async function canSignIn(email: string) {
+  if (isAllowlistedLeaderEmail(email)) return true;
+  const member = await prisma.member
+    .findFirst({ where: { isActive: true, email: { equals: email, mode: 'insensitive' } }, select: { id: true } })
+    .catch(() => null);
+  return Boolean(member);
 }
 
 async function recordGoogleLoginSafely(user: { name?: string | null; email?: string | null }) {
@@ -57,12 +45,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     strategy: 'jwt',
   },
   trustHost: true,
+  pages: {
+    // Refused sign-ins land on the member login page with ?error=AccessDenied.
+    error: '/login',
+  },
   callbacks: {
     async signIn({ profile }) {
       const email = profile?.email?.toLowerCase();
       if (!email) return false;
 
-      if (!isAllowedEmail(email)) return false;
+      if (!(await canSignIn(email))) return false;
 
       await recordGoogleLoginSafely({
         name: typeof profile?.name === 'string' ? profile.name : null,

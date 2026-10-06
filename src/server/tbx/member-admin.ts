@@ -12,6 +12,17 @@ import { isObjectId, text } from '@/server/tbx/action';
 const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Value of the group filter that means "no admin group". */
+
+/** One Google account maps to one member: an e-mail already on another member is refused. */
+async function assertEmailAvailable(email: string | null | undefined, memberId?: string) {
+  if (!email) return;
+  const other = await prisma.member.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' }, ...(memberId ? { id: { not: memberId } } : {}) },
+    select: { displayName: true },
+  });
+  if (other) throw new Error(`這個 Email 已經登記在「${other.displayName}」的檔案，請確認後再儲存。`);
+}
+
 export const UNGROUPED = '__none__';
 
 /** Start of a YYYY-MM-DD day in Taiwan time, or null when the text is not a real date. */
@@ -239,6 +250,7 @@ export async function createMember(input: MemberProfileInput) {
   const conflict = await prisma.member.findUnique({ where: { displayName: input.displayName } });
   if (conflict) throw new Error(nameConflictMessage(conflict));
   try {
+    await assertEmailAvailable(input.email);
     return await prisma.member.create({ data: { ...input, category: 'member' } });
   } catch (error) {
     if (isUniqueConflict(error)) throw new Error(`名冊裡已經有一位「${input.displayName}」，姓名不能重複。`);
@@ -268,6 +280,7 @@ export async function updateMember(memberId: string, input: MemberProfileInput) 
   });
 
   try {
+    await assertEmailAvailable(input.email, memberId);
     const member = await prisma.member.update({ where: { id: memberId }, data: input });
     return { member, changed, previousName: existing.displayName };
   } catch (error) {
@@ -611,6 +624,7 @@ export async function updateOwnProfile(memberId: string, input: OwnProfileInput)
   const changed = (Object.keys(input) as Array<keyof OwnProfileInput>).filter(
     (key) => (existing[key] ?? null) !== (input[key] ?? null),
   );
+  if (changed.includes('email')) await assertEmailAvailable(input.email, memberId);
   if (changed.length > 0) await prisma.member.update({ where: { id: memberId }, data: input });
   return { changed };
 }
