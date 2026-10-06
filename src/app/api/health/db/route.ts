@@ -1,3 +1,4 @@
+import { hasLeaderAccess } from '@/server/auth/access';
 import { prisma } from '@/server/db/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -79,7 +80,10 @@ async function pingDatabase() {
 
 export async function GET() {
   const urlState = classifyDatabaseUrl();
+  // Anyone may ask whether the app is up; only leaders see the database host and error text.
+  const detailed = await hasLeaderAccess().catch(() => false);
   if (!urlState.configured || !urlState.validUrl) {
+    if (!detailed) return Response.json({ ok: false, status: 'unavailable' }, { status: 500 });
     return Response.json({
       ok: false,
       databaseUrl: urlState,
@@ -88,6 +92,9 @@ export async function GET() {
   }
 
   const ping = await pingDatabase();
+  if (!detailed) {
+    return Response.json({ ok: ping.ok, status: ping.reason, durationMs: ping.durationMs }, { status: ping.ok ? 200 : 503 });
+  }
   return Response.json({
     ok: ping.ok,
     status: ping.reason,

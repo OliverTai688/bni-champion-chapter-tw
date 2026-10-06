@@ -11,7 +11,8 @@
     "prisma:push": "prisma db push",
     "prisma:validate": "prisma validate",
     "seed:current-layout:dry-run": "node scripts/seed-current-layout.mjs --dry-run",
-    "seed:current-layout:write": "node scripts/seed-current-layout.mjs --write"
+    "seed:current-layout:write": "node scripts/seed-current-layout.mjs --write",
+    "release:preflight": "node scripts/release-preflight.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1070.0",

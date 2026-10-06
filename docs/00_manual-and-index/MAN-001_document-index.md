@@ -79,3 +79,8 @@ Use stable prefixes:
 - `ACC-###` for acceptance and QA.
 
 Keep filenames lowercase after the prefix and use hyphens.
+
+## Release Set (2026-10-06)
+
+- `docs/05_execution-plans/PLN-006_organization-release-runbook.md` - environment variables, release steps, rollback.
+- `docs/08_acceptance-and-qa/ACC-005_release-hardening-and-ai-seating-acceptance.md` - security, LINE login, legacy migration, AI seating API evidence.

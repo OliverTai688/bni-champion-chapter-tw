@@ -14,10 +14,11 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 The current product is a weekly seating workspace:
 
-- `/` is a public entry page.
-- `/seats` is the main drag-and-drop seating workspace.
-- `/seats/print` renders the print/PDF view from saved workspace state.
-- Current data is static TypeScript seed data plus browser `localStorage`.
+- `/` is the toolbox entry page.
+- `/console` is the leadership console; `/console/events/[eventKey]/seating/grid` is the weekly drag-and-drop seating editor.
+- `/print/events/[eventKey]` renders the print/PDF view from the saved seat map.
+- `/e/[eventKey]` is the public event page, `/me` the member area, `/login` member login (LINE, Google, login link).
+- Data lives in MongoDB through Prisma; browser `localStorage` only keeps unsaved editor drafts.
 - The next product direction is a fuller event website with live seat map, attendance presence, member voting, and evidence-backed operating workflows.
 
 Do not treat this repository as `2026-nuvaclub`. That repository is a reference for agent workflow, batch tasks, and evidence reports only.
@@ -57,10 +58,12 @@ For App Router work, usually read:
 
 Current important files:
 
-- `src/app/page.tsx` - home entry page.
-- `src/app/seats/page.tsx` - server page that loads current week seed data and mounts the workspace.
-- `src/app/seats/print/page.tsx` - print route.
-- `src/components/SeatingArranger.tsx` - main client workspace, dnd, validation summary, CSV/PDF actions.
+- `src/app/page.tsx` - toolbox entry page.
+- `src/app/(console)/console/events/[eventKey]/seating/grid/page.tsx` - weekly grid seat editor (the old `/seats/[weekId]`).
+- `src/app/print/events/[eventKey]/page.tsx` - print/PDF of one event, read from the database.
+- `src/server/auth/access.ts` - the single leader-access check (`getLeaderAccess`); `src/server/tbx/viewer.ts` builds on it.
+- `src/server/ai/*`, `src/app/api/v1/ai/**`, `src/app/api/mcp/route.ts` - AI seating API and MCP server.
+- `src/components/SeatingArranger.tsx` - grid editor client component, dnd, validation summary, CSV/PDF actions.
 - `src/components/RuleEditor.tsx` - rule/roster editing panel.
 - `src/types/seating.ts` - domain-facing seating types.
 - `src/lib/seating-week.ts` - current week selection.
@@ -336,15 +339,15 @@ Manual evidence:
 
 #### SEAT-IA-006 - Print Route Cleanup
 
-Status: Ready after SEAT-IA-003
+Status: Implemented
 
 Goal: align print/PDF with one event date.
 
 Tasks:
 
-- [ ] Add `/seats/[weekId]/print` or explicitly keep `/seats/print` as state-based print only.
-- [ ] Ensure print title/date match the selected `weekId`.
-- [ ] Prevent printing stale `print-state` from a different event without visible warning.
+- [x] Add `/print/events/[eventKey]` (seat map) and `?view=attendance` (attendance report), read from the database.
+- [x] Ensure print title/date match the selected event.
+- [x] Remove the localStorage `print-state` path; the editor saves before printing.
 
 Acceptance:
 
@@ -433,6 +436,16 @@ Manual evidence:
 
 - Browser check `/w/[slug]`, click one occupied seat's `抵達`, and confirm another browser/tab updates within the polling window.
 
+## Release Hardening (2026-10-06)
+
+Status: Implemented locally; production push and deploy pending access. See `docs/05_execution-plans/PLN-006_organization-release-runbook.md` and `docs/08_acceptance-and-qa/ACC-005_release-hardening-and-ai-seating-acceptance.md`.
+
+- Legacy routes (`/seats`, `/admin`, `/w/[slug]`, `/pre-leave`) redirect into `/console`, `/e`, `/leave` (`next.config.ts`). Do not add pages back under the old paths.
+- Leader checks go through `getLeaderAccess()` / `requireLeader()`. Never check `auth()` alone: a signed-in Google or LINE user is not automatically a leader.
+- Member identity: LINE binding (`MemberIdentity`), Google e-mail match, or a one-time login link. Never trust a member id from a form.
+- On MongoDB, `field: null` does not match a missing field. For optional fields filter with `OR: [{ field: null }, { field: { isSet: false } }]`, or write `null` explicitly on create.
+- AI writes go through `src/server/ai/seating-service.ts` and always create a new seat map revision plus an operation log.
+
 ## Agent Loop
 
 For long-running work, use:
@@ -474,6 +487,6 @@ One-to-many seat page refactor:
 - [x] SEAT-IA-003 Move editor to `/seats/[weekId]`.
 - [x] SEAT-IA-004 Create/duplicate contract.
 - [x] SEAT-IA-005 Event operations placement.
-- [ ] SEAT-IA-006 Print route cleanup.
+- [x] SEAT-IA-006 Print route cleanup.
 - [x] SEAT-IA-007 Named reusable templates.
 - [x] SEAT-IA-008 Public attendance check-in.
