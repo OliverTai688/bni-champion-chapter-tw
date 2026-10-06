@@ -10,8 +10,11 @@ import { toMemberFormValues } from '@/components/tbx/members/member-values';
 import { Card, Empty, PageHeader, Stat, StatusChip } from '@/components/tbx/ui';
 import { formatEventDate, taipeiDateKey } from '@/lib/tbx/labels';
 import { getMemberDetail, getMemberRosterMeta, type MemberDetail } from '@/server/tbx/member-admin';
+import { getLineBinding } from '@/server/tbx/member-identity';
 import { isLeader } from '@/server/tbx/viewer';
-import { setMemberActiveAction, setMemberCategoryAction } from '../actions';
+
+const isObjectId = (value: string) => /^[a-f0-9]{24}$/i.test(value);
+import { setMemberActiveAction, setMemberCategoryAction, unbindLineAction } from '../actions';
 
 type RoleTerm = MemberDetail['currentTerms'][number];
 
@@ -44,7 +47,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ m
   if (!(await isLeader())) return <LeaderOnlyNotice />;
 
   const { memberId } = await params;
-  const [detail, meta] = await Promise.all([getMemberDetail(memberId), getMemberRosterMeta()]);
+  const [detail, meta, lineBinding] = await Promise.all([
+    getMemberDetail(memberId),
+    getMemberRosterMeta(),
+    isObjectId(memberId) ? getLineBinding(memberId) : null,
+  ]);
   if (!detail) notFound();
 
   const { member, currentTerms, upcomingTerms, pastTerms, recent, counts, starVotes } = detail;
@@ -216,7 +223,28 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ m
 
           {isChapterMember && member.isActive ? (
             <Card title="會員登入">
-              <LoginLinkPanel memberId={member.id} hasEmail={Boolean(member.email)} />
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm">
+                    LINE：
+                    {lineBinding ? (
+                      <span>
+                        已綁定{lineBinding.displayName ? `「${lineBinding.displayName}」` : ''}
+                        <span className="tb-mono ml-2 text-xs text-tb-faint">{taipeiDateKey(lineBinding.createdAt)}</span>
+                      </span>
+                    ) : (
+                      <span className="text-tb-muted">尚未綁定，本人第一次用 LINE 登入時會選擇姓名綁定</span>
+                    )}
+                  </p>
+                  {lineBinding ? (
+                    <ActionForm action={unbindLineAction} className="flex items-center gap-2">
+                      <input type="hidden" name="memberId" value={member.id} />
+                      <ConfirmSubmit confirmText="確定解除綁定">解除 LINE 綁定</ConfirmSubmit>
+                    </ActionForm>
+                  ) : null}
+                </div>
+                <LoginLinkPanel memberId={member.id} hasEmail={Boolean(member.email)} />
+              </div>
             </Card>
           ) : null}
         </div>

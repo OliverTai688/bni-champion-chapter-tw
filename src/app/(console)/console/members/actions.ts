@@ -11,6 +11,7 @@ import {
   setMemberCategory,
   updateMember,
 } from '@/server/tbx/member-admin';
+import { unbindLineAccount } from '@/server/tbx/member-identity';
 import { LOGIN_LINK_TTL_DAYS, issueMemberLoginLink } from '@/server/tbx/member-login';
 import { syncMemberDirectory } from '@/server/tbx/members';
 import { requireLeader } from '@/server/tbx/viewer';
@@ -162,6 +163,26 @@ export async function issueLoginLinkAction(_prev: LoginLinkState, formData: Form
       message: `已產生 ${displayName} 的登入連結，${LOGIN_LINK_TTL_DAYS} 天內有效，只能用一次。舊的連結已失效。`,
       link: `${proto}://${host}/login/link?t=${token}`,
     };
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function unbindLineAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const viewer = await requireLeader();
+    const memberId = text(formData, 'memberId');
+    if (!isObjectId(memberId)) throw new Error('找不到這位會員。');
+    await unbindLineAccount(memberId);
+    await logOperation({
+      actorRole: 'admin',
+      actorName: viewer.leaderName,
+      action: 'member_line_unbound',
+      targetType: 'Member',
+      targetId: memberId,
+    });
+    revalidateMembers(memberId);
+    return ok('已解除 LINE 綁定。本人下次用 LINE 登入時可以重新綁定。');
   } catch (error) {
     return fail(error);
   }

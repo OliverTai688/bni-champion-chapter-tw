@@ -599,3 +599,19 @@ model ApiToken {
 
   @@index([revokedAt])
 }
+
+// External login bound to a member. LINE accounts are bound by the member on
+// their first login; one account maps to one member and one member to one
+// account per provider.
+model MemberIdentity {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  provider    String
+  subject     String
+  memberId    String   @db.ObjectId
+  displayName String?
+  createdAt   DateTime @default(now())
+
+  @@unique([provider, subject])
+  @@unique([provider, memberId])
+  @@index([memberId])
+}

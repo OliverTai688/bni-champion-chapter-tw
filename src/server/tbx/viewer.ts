@@ -2,7 +2,7 @@ import 'server-only';
 
 import { timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
-import { findMemberByEmail, getGoogleIdentity, getLeaderAccess } from '@/server/auth/access';
+import { findMemberByEmail, findMemberByLine, getGoogleIdentity, getLeaderAccess, getLineIdentity } from '@/server/auth/access';
 import { sign as signValue } from '@/server/auth/secrets';
 import { prisma } from '@/server/db/prisma';
 
@@ -31,7 +31,7 @@ export interface Viewer {
   /** Leadership access: Google sign-in or the admin access cookie (same rule as the existing write APIs). */
   leader: boolean;
   leaderName: string | null;
-  /** Verified member identity: a Google account whose e-mail matches the member, or a leader-issued login link. */
+  /** Verified member identity: a bound LINE account, a Google account whose e-mail matches, or a leader-issued login link. */
   member: { id: string; displayName: string; industry: string | null; adminGroup: string | null } | null;
   /** Leadership roles whose term covers today. */
   activeRoles: string[];
@@ -45,6 +45,8 @@ async function resolveMemberId() {
   const cookieStore = await cookies();
   const fromCookie = readMemberToken(cookieStore.get(MEMBER_COOKIE)?.value);
   if (fromCookie) return fromCookie;
+  const line = await getLineIdentity();
+  if (line) return (await findMemberByLine(line.subject))?.id ?? null;
   const google = await getGoogleIdentity();
   if (!google) return null;
   return (await findMemberByEmail(google.email))?.id ?? null;

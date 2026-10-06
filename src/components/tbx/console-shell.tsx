@@ -70,7 +70,7 @@ export function ConsoleRail({ leaderName }: { leaderName: string | null }) {
 }
 
 /** Shown instead of the console when the visitor has no leadership access. */
-export function ConsoleGate({ googleEmail }: { googleEmail?: string | null }) {
+export function ConsoleGate({ googleEmail, lineName, lineEnabled }: { googleEmail?: string | null; lineName?: string | null; lineEnabled?: boolean }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -124,6 +124,14 @@ export function ConsoleGate({ googleEmail }: { googleEmail?: string | null }) {
         <button type="submit" className="tb-btn tb-btn-gold" disabled={loading || !password}>
           {loading ? '驗證中…' : '進入中控'}
         </button>
+        {lineName ? (
+          <p className="tb-form-error">LINE 帳號「{lineName}」沒有領導團隊權限。請確認已綁定你的會員姓名，且主席已加上你的職位任期。</p>
+        ) : null}
+        {lineEnabled ? (
+          <button type="button" className="tb-btn" onClick={() => signIn('line', { redirectTo: '/console' })}>
+            用 LINE 登入
+          </button>
+        ) : null}
         <button type="button" className="tb-btn" onClick={() => signIn('google')}>
           用 Google 登入
         </button>

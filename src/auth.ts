@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
+import Line from 'next-auth/providers/line';
 import { isAllowlistedLeaderEmail } from '@/server/auth/allowlist';
 import { prisma } from '@/server/db/prisma';
 import { recordGoogleLogin } from '@/server/repositories/admin-login-records-repository';
@@ -39,8 +40,11 @@ async function recordGoogleLoginSafely(user: { name?: string | null; email?: str
   }
 }
 
+/** LINE is offered only when its channel is configured (AUTH_LINE_ID / AUTH_LINE_SECRET). */
+export const LINE_LOGIN_ENABLED = Boolean(process.env.AUTH_LINE_ID && process.env.AUTH_LINE_SECRET);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [Google],
+  providers: LINE_LOGIN_ENABLED ? [Google, Line] : [Google],
   session: {
     strategy: 'jwt',
   },
@@ -50,7 +54,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: '/login',
   },
   callbacks: {
-    async signIn({ profile }) {
+    async signIn({ account, profile }) {
+      // Any LINE account may sign in: the member binds it to their name on first login,
+      // and an unbound LINE account sees nothing but the binding step.
+      if (account?.provider === 'line') return Boolean(account.providerAccountId);
+
       const email = profile?.email?.toLowerCase();
       if (!email) return false;
 
@@ -61,6 +69,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email,
       });
       return true;
+    },
+    async jwt({ token, account }) {
+      if (account) {
+        token.provider = account.provider;
+        token.providerAccountId = account.providerAccountId;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      return {
+        ...session,
+        provider: typeof token.provider === 'string' ? token.provider : undefined,
+        providerAccountId: typeof token.providerAccountId === 'string' ? token.providerAccountId : undefined,
+      };
     },
   },
 });
