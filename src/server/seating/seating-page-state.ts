@@ -1,6 +1,6 @@
 import 'server-only';
 
-import type { SeatData, SeatingLayout } from '@/types/seating';
+import type { IndustryChain, SeatData, SeatingLayout, SeatingWorkspaceState } from '@/types/seating';
 import {
   CURRENT_MEETING_WEEK,
   CURRENT_SEATING_HEROES,
@@ -44,6 +44,8 @@ export async function loadSeatingEditorState(weekId: string) {
         layout: CURRENT_SEATING_LAYOUT,
         heroes: CURRENT_SEATING_HEROES,
         memberRoster: CURRENT_SEATING_MEMBER_ROSTER,
+        industryChains: [] as IndustryChain[],
+        updatedAt: undefined as string | undefined,
         loadedFrom: 'seed' as const,
       };
     }
@@ -76,6 +78,23 @@ export async function loadSeatingEditorState(weekId: string) {
     layout,
     heroes: dto.seatMap.heroes,
     memberRoster: dto.seatMap.memberRoster,
+    industryChains: Array.isArray(dto.seatMap.industryChains) ? (dto.seatMap.industryChains as IndustryChain[]) : [],
+    updatedAt: seatMap.updatedAt.toISOString(),
     loadedFrom: 'database' as const,
+  };
+}
+
+/** The saved seat map of one event in the shape the print view and the AI API use. */
+export async function loadSeatingWorkspaceState(weekId: string): Promise<SeatingWorkspaceState | null> {
+  const state = await loadSeatingEditorState(weekId);
+  if (!state || state.loadedFrom !== 'database') return null;
+  return {
+    week: state.week,
+    topRoles: state.layout.topRoles,
+    items: state.layout.mainGrid.flat(),
+    memberRoster: state.memberRoster,
+    heroes: state.heroes,
+    industryChains: state.industryChains,
+    updatedAt: state.updatedAt ?? new Date().toISOString(),
   };
 }

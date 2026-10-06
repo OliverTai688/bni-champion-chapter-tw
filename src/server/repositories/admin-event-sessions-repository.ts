@@ -263,7 +263,7 @@ export async function createEventSeatMap(input: {
   return {
     conflict: false as const,
     week: targetWeek,
-    editUrl: `/seats/${encodeURIComponent(targetWeek.id)}`,
+    editUrl: `/console/events/${encodeURIComponent(targetWeek.id)}/seating/grid`,
     saveResult,
   };
 }

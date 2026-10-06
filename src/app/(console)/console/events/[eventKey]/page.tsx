@@ -2,12 +2,14 @@ import { leaderGuard } from '@/components/tbx/leader-guard';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AutoRefresh } from '@/components/tbx/client';
+import { GridView } from '@/components/tbx/grid/grid-view';
 import { PlanView } from '@/components/tbx/plan/plan-view';
 import { Card, Empty, Stat, StatusChip } from '@/components/tbx/ui';
 import { formatTime } from '@/lib/tbx/labels';
 import { prisma } from '@/server/db/prisma';
 import { getEventByKey, isEventPublic } from '@/server/tbx/events';
 import { getAttendance } from '@/server/tbx/participation';
+import { getGridSeatView } from '@/server/tbx/grid-seat-map';
 import { getSeatPlanView } from '@/server/tbx/seat-plan';
 import { PublishControls } from './publish-controls';
 
@@ -20,12 +22,12 @@ export default async function EventConsolePage({ params }: { params: Promise<{ e
 
   const key = encodeURIComponent(event.weekId);
   const base = `/console/events/${key}`;
-  const [{ rows, summary }, plan, giftCount, openPoll, legacySeatMaps] = await Promise.all([
+  const [{ rows, summary }, plan, grid, giftCount, openPoll] = await Promise.all([
     getAttendance(event.id),
     getSeatPlanView(event.id),
+    getGridSeatView(event.weekId, event.id),
     prisma.gift.count({ where: { sessionId: event.id } }),
     prisma.livePoll.findFirst({ where: { sessionId: event.id, status: 'open' }, select: { id: true, title: true } }),
-    prisma.seatMap.count({ where: { sessionId: event.id } }),
   ]);
 
   const published = isEventPublic(event.publicStatus);
@@ -33,8 +35,10 @@ export default async function EventConsolePage({ params }: { params: Promise<{ e
   const notArrived = members.filter((row) => row.status === 'expected');
   const substitutesWaiting = members.filter((row) => row.status === 'substitute' && !row.substituteArrivedAt);
   const guestsWaiting = rows.filter((row) => row.kind === 'guest' && row.status === 'expected');
-  const seatedIds = new Set((plan?.seats ?? []).map((seat) => seat.participationId).filter(Boolean));
-  const seatedButAway = plan ? members.filter((row) => (row.status === 'absent' || row.status === 'medical') && seatedIds.has(row.id)) : [];
+  const seatedIds = new Set(
+    [...(plan?.seats ?? []), ...(grid ? [...grid.top, ...grid.main] : [])].map((seat) => seat.participationId).filter(Boolean),
+  );
+  const seatedButAway = plan || grid ? members.filter((row) => (row.status === 'absent' || row.status === 'medical') && seatedIds.has(row.id)) : [];
 
   const recent = rows
     .map((row) => ({
@@ -106,34 +110,25 @@ export default async function EventConsolePage({ params }: { params: Promise<{ e
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card
-          title="會場平面"
+          title={grid && !plan ? '座位表' : '會場平面'}
           aside={
-            <Link href={`${base}/seating`} className="tb-btn tb-btn-sm">
+            <Link href={grid && !plan ? `${base}/seating/grid` : `${base}/seating`} className="tb-btn tb-btn-sm">
               編輯座位
             </Link>
           }
         >
           {plan ? (
             <PlanView data={plan} showNames />
+          ) : grid ? (
+            <GridView data={grid} />
           ) : (
             <Empty
-              title="這場活動還沒有平面座位表"
-              hint={
-                legacySeatMaps > 0
-                  ? '這場活動目前用的是格狀排座。要改用可以對應場地的平面座位表，到「座位」分頁選一個場地配置。'
-                  : '到「座位」分頁選一個場地配置，就能在這裡看到即時的座位與出席狀態。'
-              }
+              title="這場活動還沒有座位表"
+              hint="每週例會用格狀排座（可以從上一場或範本複製）；其他活動可以選場地配置建立平面座位表。"
               action={
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Link href={`${base}/seating`} className="tb-btn tb-btn-gold">
-                    建立平面座位表
-                  </Link>
-                  {legacySeatMaps > 0 ? (
-                    <Link href={`/seats/${key}`} className="tb-btn">
-                      開啟格狀排座
-                    </Link>
-                  ) : null}
-                </div>
+                <Link href={`${base}/seating`} className="tb-btn tb-btn-gold">
+                  建立座位表
+                </Link>
               }
             />
           )}

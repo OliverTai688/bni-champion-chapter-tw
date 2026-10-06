@@ -1,11 +1,12 @@
 import Link from 'next/link';
+import { GridView } from '@/components/tbx/grid/grid-view';
 import { PlanView } from '@/components/tbx/plan/plan-view';
 import { Empty, StatusChip } from '@/components/tbx/ui';
 import { formatEventDate } from '@/lib/tbx/labels';
 import { prisma } from '@/server/db/prisma';
-import { findLatestSeatMapByWeekId } from '@/server/repositories/seating-workspace-repository';
 import { getFocusEvent, isEventPublic, isEventToday } from '@/server/tbx/events';
 import { getAttendance } from '@/server/tbx/participation';
+import { getGridSeatView } from '@/server/tbx/grid-seat-map';
 import { getSeatPlanView } from '@/server/tbx/seat-plan';
 import { getViewer } from '@/server/tbx/viewer';
 import { MemberCheckInButton } from './check-in-button';
@@ -25,9 +26,10 @@ export default async function MemberTodayPage() {
   }
 
   const key = encodeURIComponent(event.weekId);
-  const [{ rows }, plan, openPoll] = await Promise.all([
+  const [{ rows }, plan, grid, openPoll] = await Promise.all([
     getAttendance(event.id),
     getSeatPlanView(event.id),
+    getGridSeatView(event.weekId, event.id),
     prisma.livePoll.findFirst({ where: { sessionId: event.id, status: 'open' }, select: { id: true } }),
   ]);
   const mine = rows.find((row) => row.memberId === me.id) ?? null;
@@ -35,11 +37,8 @@ export default async function MemberTodayPage() {
   const published = isEventPublic(event.publicStatus);
 
   let seatLabel = plan?.seats.find((seat) => seat.participationId === mine?.id)?.label ?? null;
-  if (!seatLabel && !plan) {
-    const legacy = await findLatestSeatMapByWeekId(event.weekId).catch(() => null);
-    const seat = legacy?.seats.find((item) => item.assignments.some((assignment) => assignment.memberId === me.id || assignment.displayName.trim() === me.displayName));
-    seatLabel = seat?.seatKey ?? null;
-  }
+  const gridSeat = !plan && grid ? [...grid.top, ...grid.main].find((seat) => (mine && seat.participationId === mine.id) || seat.name === me.displayName) ?? null : null;
+  if (!seatLabel && gridSeat) seatLabel = gridSeat.zone === 'top' ? gridSeat.badge ?? '主持團' : gridSeat.label;
 
   const guests = rows.filter((row) => row.kind === 'guest');
 
@@ -75,6 +74,7 @@ export default async function MemberTodayPage() {
         ) : null}
 
         {plan ? <PlanView data={plan} highlightParticipationId={mine?.id ?? null} showNames={false} /> : null}
+        {!plan && grid ? <GridView data={grid} highlightName={me.displayName} showStatus={false} /> : null}
 
         {today && mine?.status === 'expected' ? <MemberCheckInButton eventKey={event.weekId} /> : null}
         {!today && mine ? (

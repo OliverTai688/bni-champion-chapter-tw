@@ -1,7 +1,14 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { fail, isObjectId, ok, text, type ActionState } from '@/server/tbx/action';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/server/db/prisma';
+import {
+  createEventSeatMap,
+  createSeatTemplateFromEvent,
+  type SeatMapSourceKind,
+} from '@/server/repositories/admin-event-sessions-repository';
+import { fail, isObjectId, ok, optionalText, text, type ActionState } from '@/server/tbx/action';
 import { getEventByKey } from '@/server/tbx/events';
 import { logOperation } from '@/server/tbx/log';
 import { createEventSeatPlan, deleteEventSeatPlan, saveSeatAssignments } from '@/server/tbx/seat-plan';
@@ -89,6 +96,70 @@ export async function discardSeatPlanAction(_prev: ActionState, formData: FormDa
     });
     refresh(event.weekId);
     return ok('已移除座位表，請重新選擇配置');
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+const GRID_SOURCES: SeatMapSourceKind[] = ['latest_event', 'selected_event', 'named_template', 'base_template'];
+
+/** Weekly grid seat map for this event, copied from the latest event, a chosen event or a named template. */
+export async function createGridSeatMapAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  let target = '';
+  try {
+    const viewer = await requireLeader();
+    const event = await loadEvent(formData);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(event.weekId)) {
+      throw new Error('格狀排座只用於每週例會（以日期為代號的活動）。其他活動請用平面座位表。');
+    }
+    const existing = await prisma.seatMap.count({ where: { sessionId: event.id } });
+    if (existing > 0) throw new Error('這場活動已經有格狀座位表，請直接編輯。');
+
+    const sourceKind = text(formData, 'sourceKind') as SeatMapSourceKind;
+    if (!GRID_SOURCES.includes(sourceKind)) throw new Error('請選擇座位表的來源。');
+    const sourceWeekId = optionalText(formData, 'sourceWeekId') ?? undefined;
+    const sourceTemplateId = optionalText(formData, 'sourceTemplateId') ?? undefined;
+    if (sourceKind === 'selected_event' && !sourceWeekId) throw new Error('請選擇要複製的活動。');
+    if (sourceKind === 'named_template' && (!sourceTemplateId || !isObjectId(sourceTemplateId))) throw new Error('請選擇範本。');
+
+    await createEventSeatMap({
+      targetDate: event.weekId,
+      targetTitle: event.title,
+      meetingLabel: event.meetingLabel,
+      sourceKind,
+      sourceWeekId,
+      sourceTemplateId,
+      confirmOverwrite: true,
+    });
+    await logOperation({
+      sessionId: event.id,
+      actorRole: 'admin',
+      actorName: viewer.leaderName,
+      action: 'grid_seat_map_created',
+      targetType: 'SeatMap',
+      metadata: { sourceKind, sourceWeekId, sourceTemplateId },
+    });
+    refresh(event.weekId);
+    target = `/console/events/${encodeURIComponent(event.weekId)}/seating/grid`;
+  } catch (error) {
+    return fail(error);
+  }
+  redirect(target);
+}
+
+export async function saveSeatTemplateAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    await requireLeader();
+    const event = await loadEvent(formData);
+    const name = text(formData, 'name');
+    if (!name) throw new Error('請填寫範本名稱。');
+    // The repository writes the seat_template_saved operation log.
+    await createSeatTemplateFromEvent({
+      sourceWeekId: event.weekId,
+      name,
+      description: optionalText(formData, 'description') ?? undefined,
+    });
+    return ok(`已存成範本「${name}」，建立新例會時可以選用。`);
   } catch (error) {
     return fail(error);
   }

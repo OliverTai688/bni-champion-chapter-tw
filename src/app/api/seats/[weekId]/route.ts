@@ -1,4 +1,4 @@
-import { hasLeaderAccess, getLeaderAccess } from '@/server/auth/access';
+import { hasLeaderAccess } from '@/server/auth/access';
 import { toAdminSeatingWorkspaceDTO, toPublicSeatMapSummaryDTO } from '@/application/seating/mappers';
 import { normalizeSaveSeatingDraftRequest } from '@/application/seating/save-draft';
 import { findLatestSeatMapByWeekId, saveSeatingDraft } from '@/server/repositories/seating-workspace-repository';
@@ -19,12 +19,9 @@ async function hasAdminAccess() {
 
 export async function GET(request: Request, context: RouteContext<'/api/seats/[weekId]'>) {
   const { weekId } = await context.params;
-  const url = new URL(request.url);
-  const view = url.searchParams.get('view') === 'admin' ? 'admin' : 'public';
-
-  if (view === 'admin') {
-    if (!(await hasAdminAccess())) return unauthorized();
-  }
+  // Names and seats of unpublished events are not public; the public pages read /e/<key>.
+  if (!(await hasAdminAccess())) return unauthorized();
+  const view = new URL(request.url).searchParams.get('view') === 'public' ? 'public' : 'admin';
 
   const seatMap = await findLatestSeatMapByWeekId(weekId);
   if (!seatMap) {
@@ -44,8 +41,7 @@ export async function GET(request: Request, context: RouteContext<'/api/seats/[w
 
 export async function PATCH(request: Request, context: RouteContext<'/api/seats/[weekId]'>) {
   const { weekId } = await context.params;
-  const access = await getLeaderAccess();
-  if (!access) return unauthorized();
+  if (!(await hasAdminAccess())) return unauthorized();
 
   try {
     const draft = normalizeSaveSeatingDraftRequest(await request.json());

@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { findGridSeat, GridView } from '@/components/tbx/grid/grid-view';
 import { PlanView } from '@/components/tbx/plan/plan-view';
 import { Stat } from '@/components/tbx/ui';
 import { eventTypeLabel, formatEventDate } from '@/lib/tbx/labels';
 import { prisma } from '@/server/db/prisma';
 import { getPublicEventByKey } from '@/server/tbx/events';
 import { getAttendance } from '@/server/tbx/participation';
+import { getGridSeatView } from '@/server/tbx/grid-seat-map';
 import { getSeatPlanView } from '@/server/tbx/seat-plan';
 
 export const metadata: Metadata = { title: '活動 | 長冠軍工具箱' };
@@ -24,17 +26,18 @@ export default async function PublicEventPage({
   if (!event) notFound();
 
   const key = encodeURIComponent(event.weekId);
-  const [{ summary }, plan, openPoll, giftCount, legacy] = await Promise.all([
+  const [{ summary }, plan, grid, openPoll, giftCount] = await Promise.all([
     getAttendance(event.id),
     getSeatPlanView(event.id),
+    getGridSeatView(event.weekId, event.id),
     prisma.livePoll.findFirst({ where: { sessionId: event.id, status: 'open' }, select: { id: true } }),
     prisma.gift.count({ where: { sessionId: event.id } }),
-    prisma.seatMap.count({ where: { sessionId: event.id } }),
   ]);
 
   const query = q.trim();
   const found = query && plan ? plan.seats.find((seat) => seat.name?.includes(query) || seat.substituteName?.includes(query)) ?? null : null;
-  const legacySlug = event.publicSlug && !event.publicSlug.startsWith('__draft__') ? event.publicSlug : null;
+  const gridFound = query && !plan && grid ? findGridSeat(grid, query) : null;
+  const hasSeats = Boolean(plan || grid);
 
   return (
     <main className="mx-auto flex w-full max-w-[960px] flex-col gap-5 px-4 py-8">
@@ -75,7 +78,7 @@ export default async function PublicEventPage({
       <section className="tb-card">
         <div className="tb-card-head">
           <h2>座位</h2>
-          {plan ? (
+          {hasSeats ? (
             <form action={`/e/${key}`} className="flex items-center gap-2">
               <label className="sr-only" htmlFor="seat-q">
                 找座位
@@ -97,18 +100,19 @@ export default async function PublicEventPage({
               ) : null}
               <PlanView data={plan} highlightParticipationId={found?.participationId ?? null} showNames />
             </>
-          ) : (
-            <p className="text-sm text-tb-muted">
-              這場活動還沒有平面座位表。
-              {legacy > 0 && legacySlug ? (
-                <>
-                  {' '}
-                  <Link href={`/w/${legacySlug}`} className="text-tb-gold">
-                    看原本的座位圖
-                  </Link>
-                </>
+          ) : grid ? (
+            <>
+              {query ? (
+                <p className={gridFound ? 'tb-form-ok' : 'tb-form-error'}>
+                  {gridFound
+                    ? `${gridFound.substituteName ?? gridFound.name} 的座位：${gridFound.zone === 'top' ? gridFound.badge ?? '主持團' : gridFound.label}`
+                    : `座位表上找不到「${query}」。請確認姓名，或詢問報到台。`}
+                </p>
               ) : null}
-            </p>
+              <GridView data={grid} highlightName={gridFound ? gridFound.name : null} />
+            </>
+          ) : (
+            <p className="text-sm text-tb-muted">座位表還在安排中，請稍後再來看。</p>
           )}
         </div>
       </section>

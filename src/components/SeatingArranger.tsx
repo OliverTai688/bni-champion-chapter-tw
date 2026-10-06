@@ -369,11 +369,16 @@ function createStateSnapshot(
   };
 }
 
-function restoreInitialState(initialLayout: SeatingLayout, initialHeroes: string[], initialMemberRoster: string[]) {
+function restoreInitialState(
+  initialLayout: SeatingLayout,
+  initialHeroes: string[],
+  initialMemberRoster: string[],
+  initialIndustryChains?: IndustryChain[],
+) {
   return {
     topRoles: initialLayout.topRoles,
     items: initialLayout.mainGrid.flat(),
-    industryChains: DEFAULT_INDUSTRY_CHAINS,
+    industryChains: initialIndustryChains?.length ? initialIndustryChains : DEFAULT_INDUSTRY_CHAINS,
     heroes: initialHeroes,
     memberRoster: initialMemberRoster,
   };
@@ -412,11 +417,23 @@ export default function SeatingArranger({
   initialLayout,
   initialHeroes = [],
   initialMemberRoster,
+  initialIndustryChains,
+  serverUpdatedAt,
+  canSaveRemote = false,
+  printHref,
   week,
 }: {
   initialLayout: SeatingLayout;
   initialHeroes?: string[];
   initialMemberRoster: string[];
+  /** Industry chains saved with the seat map. */
+  initialIndustryChains?: IndustryChain[];
+  /** When the saved seat map was last written; an older local draft is ignored. */
+  serverUpdatedAt?: string;
+  /** The server already verified leader access, so saving does not need a Google session. */
+  canSaveRemote?: boolean;
+  /** Server-rendered print page for this event. The editor saves first so the print matches. */
+  printHref?: string;
   week: MeetingWeek;
 }) {
   const [topRoles, setTopRoles] = useState<SeatData[]>(initialLayout.topRoles);
@@ -435,7 +452,9 @@ export default function SeatingArranger({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const saved = localSeatingWorkspaceRepository.load(week.id);
+      const stored = localSeatingWorkspaceRepository.load(week.id);
+      // The database is the shared truth: a local draft only wins when it is newer than the last save.
+      const saved = stored && (!serverUpdatedAt || stored.updatedAt > serverUpdatedAt) ? stored : null;
       if (saved) {
         setTopRoles(saved.topRoles);
         setItems(saved.items);
@@ -444,7 +463,7 @@ export default function SeatingArranger({
         setMemberRoster(saved.memberRoster?.length ? saved.memberRoster : initialMemberRoster);
         setLastSavedAt(saved.updatedAt);
       } else {
-        const restored = restoreInitialState(initialLayout, initialHeroes, initialMemberRoster);
+        const restored = restoreInitialState(initialLayout, initialHeroes, initialMemberRoster, initialIndustryChains);
         setTopRoles(restored.topRoles);
         setItems(restored.items);
         setIndustryChains(restored.industryChains);
@@ -457,7 +476,7 @@ export default function SeatingArranger({
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [initialLayout, initialHeroes, initialMemberRoster, week.id]);
+  }, [initialLayout, initialHeroes, initialMemberRoster, initialIndustryChains, serverUpdatedAt, week.id]);
 
   const personChainIndex = useMemo(() => buildPersonChainIndex(industryChains), [industryChains]);
 
@@ -541,10 +560,10 @@ export default function SeatingArranger({
     setLastSavedAt(savedAt);
     setDirty(false);
 
-    if (authStatus !== 'authenticated') {
+    if (!canSaveRemote && authStatus !== 'authenticated') {
       setRemoteSaveStatus('local');
       setRemoteSaveMessage('已保存本機草稿；Google 登入後可同步 MongoDB。');
-      return;
+      return false;
     }
 
     setRemoteSaveStatus('saving');
@@ -567,15 +586,17 @@ export default function SeatingArranger({
         throw new Error(result?.message ?? 'MongoDB 草稿保存失敗。');
       }
       setRemoteSaveStatus('saved');
-      setRemoteSaveMessage(`MongoDB 草稿已保存：v${result.version}`);
+      setRemoteSaveMessage(`已儲存到資料庫：第 ${result.version} 版`);
+      return true;
     } catch (error) {
       setRemoteSaveStatus('error');
-      setRemoteSaveMessage(error instanceof Error ? error.message : 'MongoDB 草稿保存失敗。');
+      setRemoteSaveMessage(error instanceof Error ? error.message : '儲存到資料庫失敗。');
+      return false;
     }
   };
 
   const handleReset = () => {
-    const restored = restoreInitialState(initialLayout, initialHeroes, initialMemberRoster);
+    const restored = restoreInitialState(initialLayout, initialHeroes, initialMemberRoster, initialIndustryChains);
     localSeatingWorkspaceRepository.clear(week.id);
     setTopRoles(restored.topRoles);
     setItems(restored.items);
@@ -593,12 +614,19 @@ export default function SeatingArranger({
     downloadTextFile(`${week.id}-${week.chapterName}-座位表.csv`, csv, 'text/csv;charset=utf-8');
   };
 
-  const handleExportPDF = () => {
-    localStorage.setItem(
-      'print-state',
-      JSON.stringify(currentState),
-    );
-    window.open('/seats/print', '_blank', 'noopener,noreferrer');
+  const handleExportPDF = async () => {
+    const href = printHref ?? `/print/events/${encodeURIComponent(week.id)}`;
+    // Open the window synchronously so popup blockers allow it, then point it at the saved print.
+    const printWindow = window.open('about:blank', '_blank');
+    if (dirty && canSaveRemote) {
+      const saved = await handleSave();
+      if (!saved) {
+        printWindow?.close();
+        return;
+      }
+    }
+    if (printWindow) printWindow.location.href = href;
+    else window.location.href = href;
   };
 
   return (

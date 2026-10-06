@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { SeatData, SeatingWorkspaceState } from '@/types/seating';
 import { buildPersonChainIndex } from '@/lib/industry-chains';
 import { CHAPTER_MEMBER_DIRECTORY } from '@/lib/chapter-members';
@@ -381,45 +381,26 @@ function AttendanceReport({ dto }: { dto: AdminSeatingWorkspaceDTO }) {
   );
 }
 
-export default function PrintPage() {
-  const [state, setState] = useState<SeatingWorkspaceState | null>(null);
-  const [rawDto, setRawDto] = useState<AdminSeatingWorkspaceDTO | null>(null);
+/**
+ * Print layout for one event, rendered from saved data passed in by the server
+ * route, so the printed date always matches the event in the URL.
+ */
+export function SeatingPrintView({
+  state,
+  attendance,
+  autoPrint = true,
+}: {
+  state?: SeatingWorkspaceState | null;
+  attendance?: AdminSeatingWorkspaceDTO | null;
+  autoPrint?: boolean;
+}) {
+  const rawDto = attendance ?? null;
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const queryWeekId = searchParams.get('weekId');
-
-    if (queryWeekId) {
-      let active = true;
-      fetch(`/api/seats/${encodeURIComponent(queryWeekId)}?view=admin`)
-        .then(async (res) => {
-          if (!res.ok) throw new Error('讀取座位資料失敗');
-          return res.json() as Promise<AdminSeatingWorkspaceDTO>;
-        })
-        .then((dto) => {
-          if (!active) return;
-          setRawDto(dto);
-          window.setTimeout(() => window.print(), 700);
-        })
-        .catch((err) => {
-          console.error('Print page loading error:', err);
-        });
-
-      return () => {
-        active = false;
-      };
-    } else {
-      const loadTimer = window.setTimeout(() => {
-        const raw = sessionStorage.getItem('print-state') ?? localStorage.getItem('print-state');
-        if (raw) setState(JSON.parse(raw));
-      }, 0);
-      const printTimer = window.setTimeout(() => window.print(), 700);
-      return () => {
-        window.clearTimeout(loadTimer);
-        window.clearTimeout(printTimer);
-      };
-    }
-  }, []);
+    if (!autoPrint) return;
+    const timer = window.setTimeout(() => window.print(), 700);
+    return () => window.clearTimeout(timer);
+  }, [autoPrint]);
 
   const personChainIndex = state
     ? buildPersonChainIndex(state.industryChains)
@@ -458,7 +439,7 @@ export default function PrintPage() {
           <AttendanceReport dto={rawDto} />
         ) : !state ? (
           <p style={{ color: '#6b7280', padding: 40 }}>
-            讀取資料中…若未自動列印，請重新點擊匯出按鈕。
+            這場活動還沒有座位表。
           </p>
         ) : (
           <>

@@ -16,7 +16,7 @@ function visiblePublicSlug(publicSlug: string | null) {
 
 function buildPublicUrl(publicSlug: string | null) {
   const slug = visiblePublicSlug(publicSlug);
-  return slug ? `/w/${slug}` : null;
+  return slug ? `/e/${slug}` : null;
 }
 
 function toDTO(session: {

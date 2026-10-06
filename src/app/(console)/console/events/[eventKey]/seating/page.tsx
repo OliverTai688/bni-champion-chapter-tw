@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { prisma } from '@/server/db/prisma';
 import { ActionForm, ConfirmSubmit, SubmitButton } from '@/components/tbx/client';
 import { SeatAssigner, type AssignPerson } from '@/components/tbx/plan/seat-assigner';
 import { Card, Empty } from '@/components/tbx/ui';
@@ -9,13 +10,23 @@ import { getAttendance } from '@/server/tbx/participation';
 import { getEventSeatPlan, listLayoutOptions } from '@/server/tbx/seat-plan';
 import { createSeatPlanAction, discardSeatPlanAction } from './actions';
 
-export default async function EventSeatingPage({ params }: { params: Promise<{ eventKey: string }> }) {
-  const { eventKey } = await params;
+export default async function EventSeatingPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ eventKey: string }>;
+  searchParams: Promise<{ mode?: string }>;
+}) {
+  const [{ eventKey }, { mode }] = await Promise.all([params, searchParams]);
   const event = await getEventByKey(eventKey);
   if (!event) notFound();
 
-  const legacyHref = `/seats/${encodeURIComponent(event.weekId)}`;
-  const plan = await getEventSeatPlan(event.id);
+  const legacyHref = `/console/events/${encodeURIComponent(event.weekId)}/seating/grid`;
+  const isWeekly = /^\d{4}-\d{2}-\d{2}$/.test(event.weekId);
+  const [plan, gridCount] = await Promise.all([getEventSeatPlan(event.id), prisma.seatMap.count({ where: { sessionId: event.id } })]);
+
+  // Weekly meetings use the grid seat map; open it unless the leader asked for the floor plan.
+  if (!plan && gridCount > 0 && mode !== 'plan') redirect(legacyHref);
 
   if (!plan) {
     const groups = await listLayoutOptions();
@@ -65,12 +76,18 @@ export default async function EventSeatingPage({ params }: { params: Promise<{ e
             </ActionForm>
           </Card>
         )}
-        <p className="text-sm text-tb-muted">
-          每週例會目前使用的格狀排座仍然可以用：
-          <Link href={legacyHref} className="ml-1 text-tb-gold">
-            使用現行格狀排座
-          </Link>
-        </p>
+        {isWeekly ? (
+          <Card title="格狀排座" aside={<span>每週例會</span>}>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="min-w-0 flex-1 text-sm text-tb-muted">
+                {gridCount > 0 ? '這場例會已經有格狀座位表。' : '從上一場例會或範本複製，再拖拉調整。'}
+              </p>
+              <Link href={legacyHref} className="tb-btn tb-btn-gold">
+                {gridCount > 0 ? '開啟格狀排座' : '建立格狀座位表'}
+              </Link>
+            </div>
+          </Card>
+        ) : null}
       </div>
     );
   }
@@ -105,9 +122,11 @@ export default async function EventSeatingPage({ params }: { params: Promise<{ e
             </span>
           </p>
         </div>
-        <Link href={legacyHref} className="tb-btn tb-btn-quiet tb-btn-sm">
-          使用現行格狀排座
-        </Link>
+        {isWeekly ? (
+          <Link href={legacyHref} className="tb-btn tb-btn-quiet tb-btn-sm">
+            格狀排座
+          </Link>
+        ) : null}
         <ActionForm action={discardSeatPlanAction} className="flex flex-wrap items-center gap-2">
           <input type="hidden" name="eventKey" value={event.weekId} />
           <ConfirmSubmit confirmText="確定更換，目前排好的座位會清掉">更換配置</ConfirmSubmit>

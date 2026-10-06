@@ -67,19 +67,27 @@ export default async function ExportsPage({ params }: { params: Promise<{ eventK
             下載 Excel
           </button>
         </form>
-        <p className="mt-3 text-xs text-tb-faint">區間報表目前以格狀排座的資料計算。</p>
+        <p className="mt-3 text-xs text-tb-faint">依每場例會的格狀座位表與出席紀錄計算。</p>
       </Card>
 
-      <Card title="座位表列印">
+      <Card title="列印與 PDF">
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-tb-muted">格狀排座的列印與 PDF 仍在原本的頁面。</p>
+          <p className="text-sm text-tb-muted">從資料庫讀取這場活動已儲存的版本，列印日期一定和這場活動相同。開啟後可選「另存為 PDF」。</p>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/seats/${key}`} className="tb-btn">
-              開啟格狀排座
-            </Link>
-            <Link href={`/admin/events/${key}`} className="tb-btn">
-              原活動管理頁
-            </Link>
+            {legacySeatMaps > 0 ? (
+              <>
+                <a href={`/print/events/${key}`} target="_blank" rel="noreferrer" className="tb-btn">
+                  列印座位表
+                </a>
+                <a href={`/print/events/${key}?view=attendance`} target="_blank" rel="noreferrer" className="tb-btn">
+                  列印出席報表
+                </a>
+              </>
+            ) : (
+              <Link href={`/console/events/${key}/seating`} className="tb-btn">
+                先建立座位表
+              </Link>
+            )}
           </div>
         </div>
       </Card>

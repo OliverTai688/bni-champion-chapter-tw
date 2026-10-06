@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CalendarCheck, LayoutGrid, ShieldCheck, UserRound } from 'lucide-react';
+import { CalendarCheck, ShieldCheck, UserRound } from 'lucide-react';
 import { formatEventDate } from '@/lib/tbx/labels';
 import { getFocusEvent } from '@/server/tbx/events';
 import { getViewer } from '@/server/tbx/viewer';
@@ -83,11 +83,6 @@ export default async function Home() {
             );
           })}
         </nav>
-
-        <Link href="/seats" className="flex items-center gap-2 self-start text-sm text-tb-muted">
-          <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-          原本的格狀排座工具
-        </Link>
       </main>
     </div>
   );
