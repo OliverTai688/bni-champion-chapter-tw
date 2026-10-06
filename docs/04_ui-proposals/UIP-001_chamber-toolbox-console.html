@@ -1,0 +1,1150 @@
+<title>長冠軍商會工具箱</title>
+<meta name="description" content="商會工具箱 console 介面提案：出席 SSOT、座位連動、投票、抽獎、綠燈會員與 AI Copilot">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F4F5FA; --surface:#FFFFFF; --surface-2:#EDEFF7; --ink:#161A2E; --muted:#5A6082; --faint:#8C91AD; --line:#E0E3EE;
+  --accent:#4338CA; --accent-soft:#E6E5FB; --accent-ink:#FFFFFF;
+  --green:#15803D; --green-soft:#DBF2E3; --amber:#B45309; --amber-soft:#FBEAD1;
+  --red:#B91C1C; --red-soft:#F8DEDE; --grey:#667085; --grey-soft:#ECEDF2;
+  --violet:#7C3AED; --violet-soft:#EEE6FD;
+  --shadow:0 1px 2px rgba(22,26,46,.06),0 8px 24px -12px rgba(22,26,46,.12);
+  --font-ui:"Outfit","Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0D1021; --surface:#161A2F; --surface-2:#1E233F; --ink:#E8EAF6; --muted:#A3A8C6; --faint:#767B9A; --line:#2A2F4E;
+    --accent:#908DF8; --accent-soft:#25254C; --accent-ink:#0D1021;
+    --green:#4ADE80; --green-soft:#11301F; --amber:#FBBF24; --amber-soft:#33280F;
+    --red:#F87171; --red-soft:#3A1B1F; --grey:#9CA3B8; --grey-soft:#252A40;
+    --violet:#B794F6; --violet-soft:#2A2046;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0D1021; --surface:#161A2F; --surface-2:#1E233F; --ink:#E8EAF6; --muted:#A3A8C6; --faint:#767B9A; --line:#2A2F4E;
+  --accent:#908DF8; --accent-soft:#25254C; --accent-ink:#0D1021;
+  --green:#4ADE80; --green-soft:#11301F; --amber:#FBBF24; --amber-soft:#33280F;
+  --red:#F87171; --red-soft:#3A1B1F; --grey:#9CA3B8; --grey-soft:#252A40;
+  --violet:#B794F6; --violet-soft:#2A2046;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-ui);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums;font-family:"Outfit",var(--font-ui)}
+.mono{font-family:var(--font-mono);font-size:12px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:236px minmax(0,1fr) 356px;height:100%;}
+.nav{background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:auto}
+.brand{display:flex;gap:10px;align-items:center;padding:18px 18px 14px}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:900;font-size:15px}
+.brand b{display:block;font-size:15px;font-weight:800;letter-spacing:.01em}
+.brand small{display:block;color:var(--faint);font-size:11.5px}
+.nav-group{padding:8px 10px}
+.nav-group .eyebrow{padding:6px 8px}
+.nav-item{display:flex;width:100%;align-items:center;gap:10px;border:0;background:transparent;border-radius:9px;padding:8px 10px;text-align:left;color:var(--muted);font-weight:500}
+.nav-item svg{width:17px;height:17px;flex:none}
+.nav-item:hover{background:var(--surface-2);color:var(--ink)}
+.nav-item[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.nav-item .tag{margin-left:auto;font-size:10.5px;font-weight:700;border-radius:99px;padding:1px 7px}
+.tag-live{background:var(--green-soft);color:var(--green)}
+.tag-wip{background:var(--amber-soft);color:var(--amber)}
+.tag-plan{background:var(--grey-soft);color:var(--grey)}
+.nav-foot{margin-top:auto;padding:14px 18px;border-top:1px solid var(--line);font-size:12px;color:var(--faint)}
+
+.main{min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;padding:12px 24px;flex-wrap:wrap}
+.crumbs{display:flex;gap:6px;align-items:center;color:var(--faint);font-size:13px;flex-wrap:wrap}
+.crumbs b{color:var(--ink);font-weight:700}
+.event-switch{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 10px;font-weight:600}
+.live-dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+.topbar .spacer{flex:1}
+.role-switch{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.role-switch button{border:0;background:transparent;padding:6px 11px;font-size:12.5px;color:var(--muted);font-weight:600}
+.role-switch button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.ai-toggle{display:none;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 11px;font-weight:700;color:var(--accent)}
+.sample-note{font-size:11.5px;color:var(--amber);background:var(--amber-soft);border-radius:99px;padding:2px 9px;font-weight:600}
+
+.view{padding:24px;display:none;flex-direction:column;gap:20px;max-width:1180px;width:100%}
+.view.active{display:flex}
+.view-head{display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.view-head h1{font-size:26px;font-weight:800;letter-spacing:-.01em}
+.view-head p{color:var(--muted);max-width:62ch;margin-top:4px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:transparent;padding:9px 12px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-h h2{font-size:15px;font-weight:700}
+.panel-b{padding:16px}
+.grid-2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 12px;font-weight:600;font-size:13px;display:inline-flex;gap:6px;align-items:center}
+.btn:hover{border-color:var(--faint)}
+.btn-primary{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.btn-primary:hover{opacity:.9}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn-ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:2px 9px;font-size:12px;font-weight:700;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-present{background:var(--green-soft);color:var(--green)}
+.s-late{background:var(--amber-soft);color:var(--amber)}
+.s-expected{background:var(--grey-soft);color:var(--grey)}
+.s-absent{background:var(--red-soft);color:var(--red)}
+.s-sub{background:var(--violet-soft);color:var(--violet)}
+.s-guest{background:var(--accent-soft);color:var(--accent)}
+
+/* ---------- stats strip ---------- */
+.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.stat{padding:14px 16px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.stat:last-child{border-right:0}
+.stat b{font-size:26px;font-weight:700;line-height:1.1}
+.stat span{font-size:12.5px;color:var(--muted)}
+.stat small{font-size:11.5px;color:var(--faint)}
+.bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;display:flex;margin-top:6px}
+.bar i{display:block;height:100%}
+
+/* ---------- home ---------- */
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.tool{text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;min-height:150px;transition:border-color .15s,transform .15s}
+.tool:hover{border-color:var(--accent);transform:translateY(-1px)}
+.tool-top{display:flex;justify-content:space-between;align-items:flex-start}
+.tool-icon{width:38px;height:38px;border-radius:10px;background:var(--surface-2);display:grid;place-items:center;color:var(--ink)}
+.tool-icon svg{width:20px;height:20px}
+.tool h3{font-size:16px;font-weight:700}
+.tool p{color:var(--muted);font-size:13px}
+.tool .meta{margin-top:auto;font-size:12px;color:var(--faint);display:flex;gap:8px;flex-wrap:wrap}
+.tool.planned{background:transparent;border-style:dashed}
+.today{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;padding:18px 20px}
+.today h2{font-size:20px;font-weight:800}
+.today p{color:var(--muted)}
+.flow{display:flex;gap:0;flex-wrap:wrap;margin-top:12px}
+.flow-step{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);padding-right:14px}
+.flow-step b{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--surface-2);color:var(--ink)}
+.flow-step.done b{background:var(--ink);color:var(--bg)}
+.flow-step.now b{background:var(--accent);color:var(--accent-ink)}
+.flow-step+ .flow-step::before{content:"";width:18px;height:1px;background:var(--line);margin-right:6px}
+.todo{display:flex;flex-direction:column}
+.todo-item{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-top:1px solid var(--line)}
+.todo-item:first-child{border-top:0}
+.sev{width:4px;align-self:stretch;border-radius:4px;flex:none}
+.todo-item div{flex:1;min-width:0}
+.todo-item b{display:block;font-weight:600}
+.todo-item small{color:var(--muted)}
+
+/* ---------- attendance + seat map ---------- */
+.filter-row{display:flex;gap:6px;flex-wrap:wrap}
+.fchip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:3px 10px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.fchip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.att-list{max-height:520px;overflow:auto}
+.att-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 16px;border-top:1px solid var(--line);cursor:pointer}
+.att-row:hover,.att-row.hl{background:var(--surface-2)}
+.att-row .seatk{font-family:var(--font-mono);font-size:11.5px;color:var(--faint)}
+.att-row b{font-weight:600}
+.att-row small{display:block;color:var(--muted);font-size:12px}
+.att-row .proxy-line{color:var(--violet);font-weight:600}
+.warn-inline{color:var(--amber);font-weight:700}
+
+.seatmap{display:flex;flex-direction:column;gap:10px}
+.stage{text-align:center;font-size:11px;letter-spacing:.2em;color:var(--faint);border:1px dashed var(--line);border-radius:8px;padding:4px}
+.hostrow{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.seatgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.seat{position:relative;border:1px solid var(--line);border-radius:9px;padding:6px 7px;min-height:52px;background:var(--surface);display:flex;flex-direction:column;justify-content:space-between;gap:2px;cursor:pointer;text-align:left}
+.seat .k{font-family:var(--font-mono);font-size:10px;color:var(--faint)}
+.seat .n{font-weight:700;font-size:12.5px;line-height:1.25;overflow-wrap:anywhere}
+.seat .r{font-size:10.5px;color:var(--muted)}
+.seat .badge{position:absolute;top:4px;right:5px;font-size:10px;font-weight:800;border-radius:5px;padding:0 4px}
+.seat.present{border-color:color-mix(in srgb,var(--green) 45%,var(--line));background:color-mix(in srgb,var(--green-soft) 55%,var(--surface))}
+.seat.late{border-color:color-mix(in srgb,var(--amber) 45%,var(--line));background:color-mix(in srgb,var(--amber-soft) 55%,var(--surface))}
+.seat.absent{border-style:dashed;background:transparent;opacity:.8}
+.seat.sub{border-color:color-mix(in srgb,var(--violet) 55%,var(--line));background:color-mix(in srgb,var(--violet-soft) 60%,var(--surface))}
+.seat.guest{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));background:color-mix(in srgb,var(--accent-soft) 55%,var(--surface))}
+.seat.conflict{box-shadow:0 0 0 2px var(--amber)}
+.seat.hl{outline:2px solid var(--ink);outline-offset:1px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+
+.banner{display:flex;gap:14px;align-items:center;border:1px solid color-mix(in srgb,var(--amber) 40%,var(--line));background:var(--amber-soft);border-radius:12px;padding:12px 16px;flex-wrap:wrap}
+.banner.ok{border-color:color-mix(in srgb,var(--green) 40%,var(--line));background:var(--green-soft)}
+.banner div{flex:1;min-width:220px}
+.banner b{display:block}
+.banner small{color:var(--muted)}
+.diff{display:flex;flex-direction:column;gap:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.diff-row{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:10px;padding:10px 14px;border-top:1px solid var(--line);align-items:center}
+.diff-row:first-child{border-top:0}
+.diff-row .from{text-decoration:line-through;color:var(--faint)}
+.diff-row .to{color:var(--violet);font-weight:700}
+
+/* ---------- poll ---------- */
+.poll-row{display:grid;grid-template-columns:28px minmax(0,140px) minmax(0,1fr) 44px;gap:10px;align-items:center;padding:8px 0}
+.poll-row .rank{font-weight:800;color:var(--faint)}
+.poll-row .track{height:10px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.poll-row .fill{height:100%;background:var(--accent);border-radius:99px}
+.poll-row:first-child .fill{background:var(--ink)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600}
+
+/* ---------- lottery ---------- */
+.draw-stage{border-radius:14px;background:var(--ink);color:var(--bg);padding:26px 20px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;min-height:210px}
+.draw-stage .prize{font-size:13px;letter-spacing:.14em;opacity:.7}
+.draw-stage .who{font-size:44px;font-weight:900;letter-spacing:.04em;line-height:1.1;min-height:1.1em}
+.draw-stage .sub{font-size:13px;opacity:.7}
+.prize-list{display:flex;flex-direction:column}
+.prize-item{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:10px 16px;border-top:1px solid var(--line);cursor:pointer;text-align:left;border-left:0;border-right:0;border-bottom:0;background:transparent;width:100%}
+.prize-item:first-child{border-top:0}
+.prize-item[aria-pressed="true"]{background:var(--accent-soft)}
+.prize-item small{color:var(--muted);display:block}
+.confirm{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface-2)}
+.confirm div{flex:1;min-width:180px}
+.log{font-family:var(--font-mono);font-size:11.5px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+
+/* ---------- scorecard ---------- */
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{text-align:left;padding:9px 12px;border-top:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;color:var(--faint);font-weight:700;letter-spacing:.06em;border-top:0}
+td.num{text-align:right}
+th.num{text-align:right}
+.light{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:12.5px}
+.light i{width:12px;height:12px;border-radius:50%;display:block}
+.l-green i{background:var(--green)} .l-green{color:var(--green)}
+.l-yellow i{background:var(--amber)} .l-yellow{color:var(--amber)}
+.l-red i{background:var(--red)} .l-red{color:var(--red)}
+.l-grey i{background:var(--grey)} .l-grey{color:var(--grey)}
+.dist{display:flex;height:34px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.dist div{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;min-width:0}
+
+/* ---------- member phone ---------- */
+.phone-wrap{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.phone{width:320px;max-width:100%;border:10px solid var(--ink);border-radius:36px;background:var(--bg);padding:18px 14px;display:flex;flex-direction:column;gap:12px;box-shadow:var(--shadow)}
+.phone .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
+.phone h3{font-size:17px;font-weight:800}
+.big-seat{font-size:40px;font-weight:900;line-height:1}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:8px 4px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.field input{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:var(--surface);color:var(--ink);font:inherit}
+.phone-notes{flex:1;min-width:240px;display:flex;flex-direction:column;gap:12px}
+.note{border-left:3px solid var(--accent);padding:2px 0 2px 12px}
+.note b{display:block}
+.note p{color:var(--muted);font-size:13px}
+
+/* ---------- routes ---------- */
+.tree{font-family:var(--font-mono);font-size:12.5px;line-height:1.75;white-space:pre;overflow-x:auto;padding:16px;background:var(--surface-2);border-radius:12px;color:var(--ink)}
+.tree .g{color:var(--faint)}
+.tree .new{color:var(--accent);font-weight:500}
+.tree .c{color:var(--muted)}
+.phase{display:grid;grid-template-columns:86px minmax(0,1fr) auto;gap:12px;padding:10px 16px;border-top:1px solid var(--line);align-items:center}
+.phase:first-child{border-top:0}
+.phase .mono{color:var(--accent);font-weight:500}
+.phase small{display:block;color:var(--muted)}
+.map-table td:first-child,.map-table td:nth-child(2){font-family:var(--font-mono);font-size:12px}
+
+/* ---------- copilot ---------- */
+.copilot{background:var(--surface);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.cp-head{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}
+.cp-orb{width:30px;height:30px;border-radius:50%;background:conic-gradient(from 200deg,var(--accent),var(--violet),var(--green),var(--accent));flex:none;position:relative}
+.cp-orb::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--surface)}
+.cp-head b{display:block;font-size:14px}
+.cp-head small{color:var(--faint);font-size:11.5px}
+.cp-close{margin-left:auto;display:none}
+.cp-ctx{margin:12px 16px 0;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.cp-ctx code{font-family:var(--font-mono);font-size:11.5px;color:var(--ink)}
+.cp-body{flex:1;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.msg{font-size:13.5px;line-height:1.6}
+.msg.user{align-self:flex-end;background:var(--ink);color:var(--bg);border-radius:14px 14px 4px 14px;padding:8px 12px;max-width:88%}
+.msg.ai{display:flex;flex-direction:column;gap:8px}
+.toolcall{display:flex;gap:6px;align-items:center;font-family:var(--font-mono);font-size:11px;color:var(--muted);background:var(--surface-2);border-radius:7px;padding:4px 8px;width:fit-content;max-width:100%;overflow-wrap:anywhere}
+.risk{font-family:var(--font-ui);font-size:10px;font-weight:800;border-radius:4px;padding:0 5px}
+.risk-read{background:var(--green-soft);color:var(--green)}
+.risk-write{background:var(--amber-soft);color:var(--amber)}
+.risk-irr{background:var(--red-soft);color:var(--red)}
+.action-card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+.action-card .row{display:flex;gap:6px;flex-wrap:wrap}
+.action-card small{color:var(--muted);font-size:12px}
+.cp-suggest{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px}
+.cp-suggest button{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 10px;font-size:12px;color:var(--muted)}
+.cp-input{border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;gap:8px}
+.cp-input input{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:9px 12px;background:var(--bg);color:var(--ink);font:inherit}
+
+/* ---------- responsive ---------- */
+@media (max-width:1180px){
+  .shell{grid-template-columns:220px minmax(0,1fr)}
+  .copilot{position:fixed;top:0;right:0;bottom:0;width:min(380px,100%);z-index:20;transform:translateX(105%);transition:transform .2s;box-shadow:var(--shadow);padding-top:env(safe-area-inset-top,0px)}
+  .copilot.open{transform:none}
+  .ai-toggle{display:inline-flex}
+  .cp-close{display:inline-flex}
+}
+@media (max-width:900px){
+  .grid-2,.grid-3{grid-template-columns:minmax(0,1fr)}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat{border-bottom:1px solid var(--line)}
+}
+@media (max-width:760px){
+  html,body{height:auto}
+  .shell{display:block}
+  .nav{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  .brand small,.nav-group .eyebrow,.nav-foot,.nav-item .tag{display:none}
+  .brand{padding:10px 12px}
+  .nav-group{display:flex;padding:8px 4px;gap:2px}
+  .nav-item{white-space:nowrap;padding:7px 9px}
+  .topbar{position:static;padding:12px 16px}
+  .view{padding:16px}
+  .today{grid-template-columns:minmax(0,1fr)}
+  .draw-stage .who{font-size:34px}
+  .poll-row{grid-template-columns:24px minmax(0,96px) minmax(0,1fr) 36px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="shell">
+  <nav class="nav" aria-label="工具選單">
+    <div class="brand">
+      <div class="brand-mark">冠</div>
+      <div><b>長冠軍工具箱</b><small>BNI 長冠軍分會 · console</small></div>
+    </div>
+    <div class="nav-group" id="nav"></div>
+    <div class="nav-foot">UIP-001 介面提案 · 2026-09-30<br>搭配 ARC-006、PLN-004</div>
+  </nav>
+
+  <div class="main" id="main">
+    <header class="topbar">
+      <div class="crumbs" id="crumbs"></div>
+      <div class="event-switch"><span class="live-dot"></span><span>115/10/01 例會</span><span class="mono" style="color:var(--faint)">2026-10-01</span></div>
+      <span class="sample-note">範例資料</span>
+      <div class="spacer"></div>
+      <div class="role-switch" role="group" aria-label="檢視身份">
+        <button type="button" data-role="console" aria-pressed="true">幹部</button>
+        <button type="button" data-role="member" aria-pressed="false">會員</button>
+      </div>
+      <button type="button" class="ai-toggle" id="aiToggle">AI 助理</button>
+    </header>
+
+    <!-- HOME -->
+    <section class="view" data-view="home">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">/console</div>
+          <h1>早安，今天有 1 場例會</h1>
+          <p>工具箱首頁先回答「今天要處理什麼」，再列出所有工具。每張工具卡的狀態對應 PLN-004 的批次進度。</p>
+        </div>
+      </div>
+
+      <div class="panel today">
+        <div>
+          <div class="eyebrow">進行中的活動</div>
+          <h2>115/10/01 例會 · 07:12</h2>
+          <p id="todaySummary"></p>
+          <div class="flow" aria-label="活動流程">
+            <span class="flow-step done"><b>1</b>請假/代理登記</span>
+            <span class="flow-step done"><b>2</b>排座</span>
+            <span class="flow-step now"><b>3</b>簽到</span>
+            <span class="flow-step"><b>4</b>長冠軍之星</span>
+            <span class="flow-step"><b>5</b>抽獎</span>
+            <span class="flow-step"><b>6</b>會後報表</span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary" data-go="event">進入活動中控</button>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-h"><h2>待處理</h2><span class="eyebrow">依嚴重度排序</span></div>
+          <div class="todo" id="todo"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>本月燈號分布</h2><button type="button" class="btn btn-ghost" data-go="scorecard">看綠燈會員</button></div>
+          <div class="panel-b" style="display:flex;flex-direction:column;gap:12px">
+            <div class="dist" id="homeDist"></div>
+            <p style="color:var(--muted);font-size:13px">燈號由出席（系統內）加上 PALMS 匯入的引薦、來賓、1-2-1、CEU 計算。門檻為示意值，上線前需換成分會現行計分表。</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="view-head" style="margin-bottom:12px"><h2 style="font-size:17px;font-weight:800">所有工具</h2></div>
+        <div class="tools" id="tools"></div>
+      </div>
+    </section>
+
+    <!-- EVENT HUB -->
+    <section class="view" data-view="event">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">/console/events/2026-10-01</div>
+          <h1>115/10/01 例會</h1>
+          <p>出席與代理是這場活動的單一資料源。左邊名單和右邊座位圖讀同一份 Participation，點任一邊都會同步標示。</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn">公開頁 /e/2026-10-01</button>
+          <button type="button" class="btn">簽到 QR</button>
+        </div>
+      </div>
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" aria-selected="true">總覽・出席與代理</button>
+        <button type="button" role="tab" aria-selected="false" data-go="seating">座位表</button>
+        <button type="button" role="tab" aria-selected="false" data-go="star">長冠軍之星</button>
+        <button type="button" role="tab" aria-selected="false" data-go="lottery">禮物抽獎</button>
+        <button type="button" role="tab" aria-selected="false">匯出</button>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div id="eventBanner"></div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-h">
+            <h2>出席與代理</h2>
+            <div class="filter-row" id="attFilters"></div>
+          </div>
+          <div class="att-list" id="attList"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>座位即時狀態</h2><div class="legend" id="legend"></div></div>
+          <div class="panel-b"><div class="seatmap" id="seatmapEvent"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEATING -->
+    <section class="view" data-view="seating">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">/console/events/2026-10-01/seating</div>
+          <h1>座位表</h1>
+          <p>編輯器直接讀取請假與代理登記。套用前先看變更預覽；套用後座位記錄會綁定到對應的出席紀錄，不再靠姓名比對。</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn">從上週產生草稿</button>
+          <button type="button" class="btn">列印 / PDF</button>
+        </div>
+      </div>
+      <div id="seatBanner"></div>
+      <div id="seatDiff"></div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-h"><h2>座位圖</h2><div class="legend" id="legend2"></div></div>
+          <div class="panel-b"><div class="seatmap" id="seatmapEdit"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>規則檢查</h2><span class="num" id="ruleScore"></span></div>
+          <div class="todo" id="rules"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAR -->
+    <section class="view" data-view="star">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">/console/events/2026-10-01/polls</div>
+          <h1>長冠軍之星</h1>
+          <p>投票資格改為「已簽到者一人一票」：簽到時發一次性投票憑證，不再依賴共用投票碼。候選人只列出已到場的會員。</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn">大螢幕顯示</button>
+          <button type="button" class="btn btn-primary">結束投票</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-h"><h2>即時排名</h2><span class="chip s-present">投票中</span></div>
+          <div class="panel-b" id="pollRows"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>投票設定</h2></div>
+          <div class="panel-b" style="display:flex;flex-direction:column;gap:14px">
+            <dl class="kv" id="pollKv"></dl>
+            <div class="bar" id="pollBar" aria-hidden="true"></div>
+            <p style="color:var(--muted);font-size:13px">待分會決定：代理人能否投票、能否被投。目前原型設定為「代理人可投、不列為候選人」。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOTTERY -->
+    <section class="view" data-view="lottery">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">/console/events/2026-10-01/lottery</div>
+          <h1>禮物抽獎</h1>
+          <p>抽獎池直接取自已簽到名單。開抽前會固定名單快照與隨機種子並寫入紀錄，事後可以重算驗證。</p>
+        </div>
+        <button type="button" class="btn">大螢幕 /e/2026-10-01/lottery/stage</button>
+      </div>
+      <div class="grid-2">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="draw-stage" aria-live="polite">
+            <div class="prize" id="stagePrize"></div>
+            <div class="who" id="stageWho">準備開抽</div>
+            <div class="sub" id="stageSub"></div>
+          </div>
+          <div id="drawConfirm"></div>
+          <div class="panel">
+            <div class="panel-h"><h2>抽獎紀錄</h2><span class="eyebrow">ActivityLog</span></div>
+            <div class="panel-b log" id="drawLog"><span>尚未開抽</span></div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="panel">
+            <div class="panel-h"><h2>獎項</h2><span class="eyebrow">點選要抽的獎</span></div>
+            <div class="prize-list" id="prizes"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h2>抽獎池</h2><b class="num" id="poolCount"></b></div>
+            <div class="panel-b" style="display:flex;flex-direction:column;gap:10px">
+              <div class="filter-row" id="poolFilters"></div>
+              <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)"><input type="checkbox" id="excludeWinners" checked> 排除本場已中獎者</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCORECARD -->
+    <section class="view" data-view="scorecard">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">/console/scorecard</div>
+          <h1>綠燈會員</h1>
+          <p>近 6 個月的會員行為計分。出席、代理、遲到由系統自動計算；引薦、來賓、1-2-1、CEU 先從 BNI Connect 的 PALMS 匯出檔匯入。</p>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn">匯入 PALMS CSV</button>
+          <button type="button" class="btn">計分規則 v1（示意）</button>
+        </div>
+      </div>
+      <div class="dist" id="scoreDist"></div>
+      <div class="filter-row" id="lightFilters"></div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>會員</th><th>產業</th><th class="num">缺席</th><th class="num">代理</th><th class="num">引薦</th><th class="num">來賓</th><th class="num">1-2-1</th><th class="num">CEU</th><th class="num">分數</th><th>燈號</th><th>趨勢</th></tr></thead>
+            <tbody id="scoreBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- MEMBER VIEW -->
+    <section class="view" data-view="member">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">/me · /leave · /e/[eventKey]/check-in</div>
+          <h1>會員視角</h1>
+          <p>會員只看到自己的座位、自己的燈號和公開統計。請假與代理登記直接寫進 Participation，排座那一端立即看得到。</p>
+        </div>
+      </div>
+      <div class="phone-wrap">
+        <div class="phone" aria-label="會員手機畫面">
+          <div class="eyebrow">下一場活動</div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+            <div><h3>10/01（四）例會</h3><small style="color:var(--muted)">06:30 報到 · 07:00 開始</small></div>
+            <div style="text-align:right"><div class="eyebrow">我的座位</div><div class="big-seat num">5B</div></div>
+          </div>
+          <div class="card" style="display:flex;flex-direction:column;gap:10px">
+            <b>這週無法出席？</b>
+            <div class="seg" role="group" aria-label="出席意向">
+              <button type="button" data-intent="present" aria-pressed="false">會出席</button>
+              <button type="button" data-intent="sub" aria-pressed="true">找代理</button>
+              <button type="button" data-intent="absent" aria-pressed="false">請假</button>
+            </div>
+            <label class="field" id="proxyField">代理人姓名<input id="proxyInput" value="陳先生（保險同業）"></label>
+            <button type="button" class="btn btn-primary" id="intentSubmit" style="justify-content:center">送出登記</button>
+            <small id="intentMsg" style="color:var(--muted)"></small>
+          </div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+            <div><div class="eyebrow">我的燈號</div><span class="light l-green"><i></i>綠燈 · 78 分</span></div>
+            <small style="color:var(--muted)">近 6 個月缺席 0 次</small>
+          </div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+            <b>長冠軍之星</b><button type="button" class="btn btn-accent">簽到後投票</button>
+          </div>
+        </div>
+        <div class="phone-notes">
+          <div class="note"><b>身份確認</b><p>目前公開頁任何人都能替任何人簽到或請假。建議會員登入（LINE Login 或手機一次性碼）後才能登記自己的意向；代理人掃 QR 簽到時選「我代理誰」。</p></div>
+          <div class="note"><b>代理 ≠ 已到場</b><p>登記代理只是意向。代理人自己簽到後，被代理會員才記為 S（代理出席）；沒來就在中控顯示「代理・未到」。</p></div>
+          <div class="note"><b>代理人也是人脈</b><p>代理人第一次出現就建立 Person 紀錄。常來代理的人可以轉成邀賓名單，這是之後人脈模組的入口之一。</p></div>
+          <div class="note"><b>舊網址</b><p>已印出的 <span class="mono">/w/[slug]</span> 與 <span class="mono">/pre-leave</span> 永久 308 轉址到新路由，QR code 不用重印。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROUTES -->
+    <section class="view" data-view="routes">
+      <div class="view-head">
+        <div>
+          <div class="eyebrow">ARC-006 §7 · PLN-004</div>
+          <h1>路由地圖與搬遷</h1>
+          <p>依受眾分成 public、member、console 三個 route group；單場活動的工具都在 <span class="mono">/console/events/[eventKey]</span> 底下，跨活動的長期資料放在 console 根層。</p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-h"><h2>新路由</h2><span class="eyebrow">紫色 = 新增</span></div>
+          <div class="panel-b"><div class="tree" id="tree"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>搬遷批次</h2><span class="eyebrow">先修資料，再搬路由</span></div>
+          <div id="phases"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h2>舊路由對照</h2><span class="eyebrow">next.config.ts redirects()</span></div>
+        <div class="table-wrap">
+          <table class="map-table">
+            <thead><tr><th>舊路由</th><th>新路由</th><th>類型</th><th>保留</th></tr></thead>
+            <tbody id="mapBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="copilot" id="copilot" aria-label="商會 AI 助理">
+    <div class="cp-head">
+      <div class="cp-orb" aria-hidden="true"></div>
+      <div><b>商會 AI</b><small>透過 capability registry 操作 · 寫入需確認</small></div>
+      <button type="button" class="btn btn-ghost cp-close" id="cpClose">關閉</button>
+    </div>
+    <div class="cp-ctx" id="cpCtx"></div>
+    <div class="cp-body" id="cpBody" aria-live="polite"></div>
+    <div class="cp-suggest" id="cpSuggest"></div>
+    <form class="cp-input" id="cpForm">
+      <input id="cpInput" placeholder="問 AI，例如：誰還沒簽到？" autocomplete="off">
+      <button type="submit" class="btn btn-primary">送出</button>
+    </form>
+  </aside>
+</div>
+
+<script>
+(function(){
+  const $ = (s, r=document) => r.querySelector(s);
+  const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  /* ---------- icons ---------- */
+  const I = {
+    home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+    event:'<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>',
+    seat:'<path d="M6 12V5a2 2 0 012-2h8a2 2 0 012 2v7"/><path d="M4 12h16v4H4zM6 16v5M18 16v5"/>',
+    star:'<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/>',
+    gift:'<rect x="3" y="8" width="18" height="13" rx="1"/><path d="M12 8v13M3 12h18M12 8S10 3 7.5 4 9 8 12 8zM12 8s2-5 4.5-4S15 8 12 8z"/>',
+    light:'<rect x="8" y="2" width="8" height="20" rx="4"/><circle cx="12" cy="7" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="17" r="1.6"/>',
+    check:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2h11"/>',
+    users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.4 0 4 1.4 4.6 4"/>',
+    network:'<circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.2 7.2l3.6 8.6M16.8 7.2l-3.6 8.6M7.5 6h9"/>',
+    handshake:'<path d="M3 12l4-4 5 3 5-3 4 4"/><path d="M7 8l5 7 5-7"/><path d="M3 12v4h4M21 12v4h-4"/>',
+    route:'<circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H16a3 3 0 000-6H8a3 3 0 010-6h7.5"/>',
+    phone:'<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+  };
+  const svg = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+
+  /* ---------- sample data ---------- */
+  const NAMES = ['王柏安','李品妤','陳冠宇','林雅婷','張家豪','黃詩涵','吳承翰','劉怡君','蔡宗翰','楊佩珊','許志明','鄭宇辰','謝欣怡','郭建宏','洪子晴','曾柏翰','邱靖雯','廖俊傑','賴筱涵','周信宏','徐嘉玲','蘇威廷','葉思妤','莊明哲','江昱廷','何佳蓉','羅冠霖','高詠晴','潘振宇','簡若瑜','游博凱','呂芷萱'];
+  const INDS = ['室內設計','保險規劃','會計師','商業攝影','餐飲顧問','律師','網站開發','房地產','品牌設計','人資顧問','健康管理','物流','印刷','牙醫','汽車美容','理財規劃','活動企劃','空調工程','旅行社','翻譯','系統整合','烘焙','瑜珈教室','水電工程','花藝','行銷顧問','影音製作','中醫','外語教學','禮品採購','法拍代標','清潔服務'];
+  const HOST_ROLES = ['活動協調','財務秘書','主席','副主席','教育協調'];
+  const GUESTS = [
+    {name:'方以晴', ind:'咖啡烘焙', host:'曾柏翰', arrived:true},
+    {name:'石家銘', ind:'太陽能', host:'邱靖雯', arrived:true},
+    {name:'孫若彤', ind:'寵物美容', host:'廖俊傑', arrived:false},
+    {name:'馬文浩', ind:'物業管理', host:'賴筱涵', arrived:true},
+    {name:'田采薇', ind:'婚禮顧問', host:'周信宏', arrived:true},
+  ];
+
+  // member participation state (Participation SSOT, sample)
+  const members = NAMES.map((name,i) => ({ id:'m'+i, name, ind:INDS[i], status:'present', seat:null }));
+  const byName = n => members.find(m => m.name === n);
+  const set = (n, obj) => Object.assign(byName(n), obj);
+  ['簡若瑜','游博凱','高詠晴','江昱廷'].forEach(n => set(n,{status:'expected'}));
+  ['葉思妤','何佳蓉'].forEach(n => set(n,{status:'late'}));
+  set('許志明',{status:'sub', proxy:{name:'陳先生', arrived:false}, intentAt:'09/29 21:14 · 會員自行登記'});
+  set('蘇威廷',{status:'sub', proxy:{name:'Eason 吳', arrived:true}, intentAt:'09/28 18:02 · 會員自行登記'});
+  set('莊明哲',{status:'sub', proxy:{name:'林小姐', arrived:true}, intentAt:'09/30 10:40 · 幹部代登'});
+  set('羅冠霖',{status:'absent', intentAt:'09/29 08:22 · 會員自行登記'});
+
+  const state = { applied:false, attFilter:'all', highlight:null, role:'console', poolFilter:{member:true,guest:true,sub:true}, prize:0, winners:[], confirming:false, drawing:false, light:'all' };
+
+  // seat layout: host row + 8x4 grid
+  const hostRow = HOST_ROLES.map((r,i) => ({key:'H'+(i+1), role:r, who:NAMES[i]}));
+  const grid = [];
+  const cols = ['A','B','C','D'];
+  let mi = 5;
+  const nextMember = () => NAMES[mi++];
+  for (let r=1;r<=8;r++){
+    for (let c=0;c<4;c++){
+      const key = r+cols[c];
+      let seat = {key};
+      if (r===1 && c<3) seat = {key, guest:GUESTS[c], label:'賓'+(c+1)};
+      else if (r===1 && c===3) seat = {key, who:nextMember(), label:'值日生'};
+      else if (r===2 && c<3) seat = {key, who:GUESTS[c].host, label:'執·賓'+(c+1)};
+      else if (r===2 && c===3) seat = {key, who:nextMember(), label:'音控'};
+      else if (r===3 && c<2) seat = {key, guest:GUESTS[c+3], label:'賓'+(c+4)};
+      else if (r===4 && c<2) seat = {key, who:GUESTS[c+3].host, label:'執·賓'+(c+4)};
+      else seat = {key, who:null};
+      grid.push(seat);
+    }
+  }
+  const hostNames = new Set(GUESTS.map(g=>g.host));
+  const pool = NAMES.slice(5).filter(n => !hostNames.has(n) && !grid.some(s=>s.who===n));
+  grid.forEach(s => { if (!s.guest && s.who===null) s.who = pool.shift() || null; });
+  hostRow.forEach(h => byName(h.who).seat = h.key);
+  grid.forEach(s => { if (s.who) byName(s.who).seat = s.key; });
+
+  const intents = () => members.filter(m => m.status==='sub' || m.status==='absent');
+  const statusOf = m => {
+    if (m.status==='sub') return state.applied ? 'sub' : 'sub';
+    return m.status;
+  };
+  const STATUS_LABEL = {present:'已簽到', late:'遲到', expected:'未到', absent:'請假', sub:'代理', guest:'來賓'};
+
+  /* ---------- nav ---------- */
+  const NAV = [
+    {id:'home', label:'工具箱首頁', icon:'home'},
+    {id:'event', label:'活動中控', icon:'event', tag:['live','上線']},
+    {id:'seating', label:'座位表', icon:'seat', tag:['live','上線']},
+    {id:'star', label:'長冠軍之星', icon:'star', tag:['live','上線']},
+    {id:'event', label:'出席與代理', icon:'check', tag:['wip','整合'], alias:true},
+    {id:'lottery', label:'禮物抽獎', icon:'gift', tag:['plan','新']},
+    {id:'scorecard', label:'綠燈會員', icon:'light', tag:['plan','新']},
+    {id:'member', label:'會員視角', icon:'phone'},
+    {id:'routes', label:'路由地圖', icon:'route'},
+  ];
+  $('#nav').innerHTML = '<div class="eyebrow">工具</div>' + NAV.map((n,i)=>`<button type="button" class="nav-item" data-go="${n.id}" data-idx="${i}">${svg(n.icon)}<span>${n.label}</span>${n.tag?`<span class="tag tag-${n.tag[0]}">${n.tag[1]}</span>`:''}</button>`).join('')
+    + '<div class="eyebrow" style="margin-top:10px">規劃中</div>'
+    + [['users','會員名冊'],['network','人脈與產業鏈'],['handshake','1-2-1 追蹤']].map(([ic,l])=>`<button type="button" class="nav-item" data-go="routes">${svg(ic)}<span>${l}</span><span class="tag tag-plan">規劃</span></button>`).join('');
+
+  const CRUMBS = {
+    home:['工具箱'], event:['工具箱','活動','<b>115/10/01 例會</b>'], seating:['工具箱','活動','115/10/01','<b>座位表</b>'],
+    star:['工具箱','活動','115/10/01','<b>長冠軍之星</b>'], lottery:['工具箱','活動','115/10/01','<b>禮物抽獎</b>'],
+    scorecard:['工具箱','<b>綠燈會員</b>'], member:['<b>會員視角</b>'], routes:['工具箱','<b>路由地圖</b>'],
+  };
+
+  function go(view){
+    if (!CRUMBS[view]) view='home';
+    $$('.view').forEach(v => v.classList.toggle('active', v.dataset.view===view));
+    $$('.nav-item').forEach(b => b.removeAttribute('aria-current'));
+    const first = $$('.nav-item').find(b => b.dataset.go===view);
+    if (first) first.setAttribute('aria-current','page');
+    $('#crumbs').innerHTML = CRUMBS[view].map((c,i)=> (i? '<span>/</span>':'') + `<span>${c}</span>`).join('');
+    state.view = view;
+    $$('.role-switch button').forEach(b => b.setAttribute('aria-pressed', String((view==='member') === (b.dataset.role==='member'))));
+    renderCopilot();
+    $('#main').scrollTop = 0; if (window.matchMedia && matchMedia('(max-width:760px)').matches) window.scrollTo(0,0);
+    try{ history.replaceState(null,'','#'+view); }catch(e){}
+  }
+  document.addEventListener('click', e => {
+    const t = e.target.closest('[data-go]');
+    if (t){ go(t.dataset.go); $('#copilot').classList.remove('open'); }
+  });
+  $$('.role-switch button').forEach(b => b.addEventListener('click', () => go(b.dataset.role==='member' ? 'member' : 'home')));
+  $('#aiToggle').addEventListener('click', () => $('#copilot').classList.add('open'));
+  $('#cpClose').addEventListener('click', () => $('#copilot').classList.remove('open'));
+
+  /* ---------- counts ---------- */
+  function counts(){
+    const c = {present:0, late:0, expected:0, absent:0, sub:0, subArrived:0, guests:GUESTS.length, guestsArrived:GUESTS.filter(g=>g.arrived).length};
+    members.forEach(m => { c[m.status]++; if (m.status==='sub' && m.proxy.arrived) c.subArrived++; });
+    c.total = members.length;
+    c.inRoom = c.present + c.late + c.subArrived + c.guestsArrived;
+    return c;
+  }
+
+  /* ---------- home ---------- */
+  function renderHome(){
+    const c = counts();
+    $('#todaySummary').textContent = `會員 ${c.total} 位：已簽到 ${c.present + c.late}、代理 ${c.sub}（代理人到 ${c.subArrived}）、請假 ${c.absent}、未到 ${c.expected}。來賓 ${c.guestsArrived}/${c.guests}。`;
+    const todos = [];
+    if (!state.applied) todos.push(['var(--amber)','4 筆請假／代理尚未套用到座位表','許志明、蘇威廷、莊明哲登記代理，羅冠霖請假。','seating','處理']);
+    todos.push(['var(--red)','代理人未到：陳先生（代理許志明）','登記於 09/29 21:14，開會前 18 分鐘仍未簽到。','event','查看']);
+    todos.push(['var(--amber)', `${c.expected} 位會員尚未簽到`,'簡若瑜、游博凱、高詠晴、江昱廷','event','查看']);
+    todos.push(['var(--grey)','2 位會員燈號由綠轉黃','潘振宇、呂芷萱：近 6 個月 1-2-1 次數偏低。','scorecard','查看']);
+    $('#todo').innerHTML = todos.map(([col,t,s,v,b]) => `<div class="todo-item"><span class="sev" style="background:${col}"></span><div><b>${t}</b><small>${s}</small></div><button type="button" class="btn" data-go="${v}">${b}</button></div>`).join('');
+
+    const tools = [
+      ['event','活動中控','單場活動的所有工具：出席、座位、投票、抽獎、匯出。','live','已上線','/console/events/[eventKey]','event'],
+      ['seat','座位表','拖拉排座、模板、列印。新增：讀取請假與代理，一鍵套用。','live','已上線','…/seating','seating'],
+      ['star','長冠軍之星','每場例會的匿名投票。新增：簽到後發一次性投票憑證。','live','已上線','…/polls','star'],
+      ['check','代理人簽到','請假／代理登記、QR 簽到。改用 Participation 作為單一資料源。','wip','整合中','/leave · …/attendance','event'],
+      ['gift','禮物抽獎','以已簽到名單為抽獎池，固定名單快照與種子，可重算驗證。','plan','新工具','…/lottery','lottery'],
+      ['light','綠燈會員','出席自動計分，加上 PALMS 匯入的引薦、來賓、1-2-1、CEU。','plan','新工具','/console/scorecard','scorecard'],
+      ['users','會員名冊','會員、來賓、代理人都是 Person；會員另有 Membership。','plan','規劃中','/console/members','routes'],
+      ['network','人脈與產業鏈','A/B/C/D 產業鏈、引薦紀錄、缺口產業。AI 建議邀賓方向。','plan','規劃中','/console/network','routes'],
+      ['handshake','1-2-1 持續追蹤','會後摘要、下一步、到期提醒，交給 AI 協助跟進。','plan','規劃中','/console/one-to-ones','routes'],
+    ];
+    $('#tools').innerHTML = tools.map(([ic,t,d,s,sl,path,go]) => `<button type="button" class="tool ${s==='plan' && sl==='規劃中' ? 'planned':''}" data-go="${go}">
+      <div class="tool-top"><span class="tool-icon">${svg(ic)}</span><span class="nav-item-tag tag tag-${s}" style="font-size:11px;font-weight:700;border-radius:99px;padding:1px 8px">${sl}</span></div>
+      <h3>${t}</h3><p>${d}</p><div class="meta"><span class="mono">${path}</span></div></button>`).join('');
+    renderDist($('#homeDist'));
+  }
+
+  /* ---------- seat map ---------- */
+  function seatInfo(s){
+    if (s.guest) return {name:s.guest.name, role:s.label, cls: s.guest.arrived ? 'guest' : '', badge:s.label, status: s.guest.arrived?'guest':'expected'};
+    if (!s.who) return {name:'空位', role:'', cls:'', status:null};
+    const m = byName(s.who);
+    let name = m.name, role = s.label || m.ind, cls = m.status, badge = s.label || '';
+    let conflict = false;
+    if (m.status==='sub'){
+      if (state.applied){ name = m.proxy.name; role = '代理 ' + m.name; cls = 'sub'; badge='代'; }
+      else { conflict = true; cls = 'expected'; }
+    }
+    if (m.status==='absent'){
+      if (state.applied){ name = '（請假）'; role = m.name; cls = 'absent'; badge=''; }
+      else { conflict = true; cls = 'expected'; }
+    }
+    if (m.status==='expected') cls = '';
+    return {name, role, cls, badge, conflict, member:m};
+  }
+  function seatHTML(s, isHost){
+    const info = isHost ? (()=>{ const m=byName(s.who); return {name:m.name, role:s.role, cls:m.status==='expected'?'':m.status, member:m}; })() : seatInfo(s);
+    const hl = info.member && state.highlight===info.member.id;
+    const badgeStyle = info.cls==='sub' ? 'background:var(--violet);color:var(--surface)' : 'background:var(--surface-2);color:var(--muted)';
+    return `<button type="button" class="seat ${info.cls||''} ${info.conflict?'conflict':''} ${hl?'hl':''}" data-mid="${info.member?info.member.id:''}" title="${esc(info.name)}">
+      <span class="k">${s.key}</span>${info.badge?`<span class="badge" style="${badgeStyle}">${esc(info.badge)}</span>`:''}
+      <span class="n">${esc(info.name)}</span><span class="r">${esc(info.role||'')}</span></button>`;
+  }
+  function renderSeatmap(el){
+    el.innerHTML = `<div class="stage">講台</div><div class="hostrow">${hostRow.map(h=>seatHTML(h,true)).join('')}</div><div class="seatgrid">${grid.map(s=>seatHTML(s)).join('')}</div>`;
+  }
+  const LEGEND = [['s-present','已簽到'],['s-late','遲到'],['s-sub','代理'],['s-absent','請假'],['s-guest','來賓']];
+  $('#legend').innerHTML = $('#legend2').innerHTML = LEGEND.map(([c,l])=>`<span class="chip ${c}">${l}</span>`).join('');
+
+  /* ---------- event hub ---------- */
+  const ATT_FILTERS = [['all','全部'],['expected','未到'],['sub','代理'],['absent','請假'],['late','遲到']];
+  function renderEvent(){
+    const c = counts();
+    const total = c.total;
+    const pct = n => (n/total*100).toFixed(1)+'%';
+    $('#stats').innerHTML = [
+      [`${c.present + c.late}<small style="font-size:14px;color:var(--faint)"> / ${total}</small>`,'會員已簽到',`遲到 ${c.late}`],
+      [c.sub,'代理',`代理人已到 ${c.subArrived}`],
+      [c.absent,'請假','不計入座位'],
+      [c.expected,'未到','開會前 18 分鐘'],
+      [`${c.guestsArrived}<small style="font-size:14px;color:var(--faint)"> / ${c.guests}</small>`,'來賓','執事已配對'],
+    ].map(([b,s,sm],i)=>`<div class="stat"><b class="num">${b}</b><span>${s}</span><small>${sm}</small>${i===0?`<div class="bar"><i style="width:${pct(c.present)};background:var(--green)"></i><i style="width:${pct(c.late)};background:var(--amber)"></i><i style="width:${pct(c.sub)};background:var(--violet)"></i><i style="width:${pct(c.absent)};background:var(--red)"></i></div>`:''}</div>`).join('');
+
+    $('#eventBanner').innerHTML = state.applied
+      ? `<div class="banner ok"><div><b>座位表已與出席同步</b><small>代理人與請假已套用到座位；之後的登記會即時出現在這裡。</small></div></div>`
+      : `<div class="banner"><div><b>4 筆請假／代理尚未套用到座位表</b><small>座位圖上橘框的座位還是原會員姓名。這是目前系統的斷點：登記存在 metadata，編輯器看不到。</small></div><button type="button" class="btn btn-primary" data-go="seating">到座位表處理</button></div>`;
+
+    $('#attFilters').innerHTML = ATT_FILTERS.map(([k,l])=>`<button type="button" class="fchip" data-att="${k}" aria-pressed="${state.attFilter===k}">${l}</button>`).join('');
+    const order = {expected:0, sub:1, absent:2, late:3, present:4};
+    const rows = members.filter(m => state.attFilter==='all' || m.status===state.attFilter).sort((a,b)=>order[a.status]-order[b.status]);
+    $('#attList').innerHTML = rows.map(m => {
+      let extra = esc(m.ind);
+      if (m.status==='sub') extra = `<span class="proxy-line">代理人：${esc(m.proxy.name)} · ${m.proxy.arrived?'已簽到':'未到'}</span>${state.applied?'':' · <span class="warn-inline">未套用到座位</span>'}`;
+      if (m.status==='absent') extra = `${esc(m.intentAt)}${state.applied?'':' · <span class="warn-inline">仍在座位上</span>'}`;
+      const chip = m.status==='sub' ? `<span class="chip s-sub">${m.proxy.arrived?'代理・到':'代理・未到'}</span>` : `<span class="chip s-${m.status}">${STATUS_LABEL[m.status]}</span>`;
+      return `<div class="att-row ${state.highlight===m.id?'hl':''}" data-mid="${m.id}"><span class="seatk">${m.seat||'—'}</span><div><b>${esc(m.name)}</b><small>${extra}</small></div>${chip}</div>`;
+    }).join('') || '<div class="att-row"><span></span><div><small>沒有符合條件的會員</small></div></div>';
+    renderSeatmap($('#seatmapEvent'));
+  }
+  document.addEventListener('click', e => {
+    const f = e.target.closest('[data-att]');
+    if (f){ state.attFilter = f.dataset.att; renderEvent(); return; }
+    const m = e.target.closest('[data-mid]');
+    if (m && m.dataset.mid){
+      state.highlight = state.highlight===m.dataset.mid ? null : m.dataset.mid;
+      renderEvent(); renderSeating();
+      const row = $(`#attList [data-mid="${state.highlight}"]`);
+      if (row && m.classList.contains('seat')) row.scrollIntoView({block:'nearest'});
+    }
+  });
+
+  /* ---------- seating ---------- */
+  function renderSeating(){
+    const list = intents();
+    if (state.applied){
+      $('#seatBanner').innerHTML = `<div class="banner ok"><div><b>已套用 ${list.length} 筆出席意向</b><small>座位記錄已綁定 participationId。可在 ActivityLog 一鍵還原。</small></div><button type="button" class="btn" id="undoApply">還原</button></div>`;
+      $('#seatDiff').innerHTML = '';
+    } else {
+      $('#seatBanner').innerHTML = `<div class="banner"><div><b>${list.length} 筆請假／代理尚未套用</b><small>來源：/leave 登記與幹部代登。套用前會先列出每個座位的變更。</small></div><button type="button" class="btn btn-primary" id="previewApply">${state.preview?'收起預覽':'預覽變更'}</button></div>`;
+      $('#seatDiff').innerHTML = state.preview ? `<div class="diff">${list.map(m => `<div class="diff-row"><span class="mono">${m.seat}</span><div><span class="from">${esc(m.name)}</span> → <span class="to">${m.status==='sub'?esc(m.proxy.name)+'（代理）':'空位（請假）'}</span><div style="font-size:12px;color:var(--muted)">${esc(m.intentAt)}</div></div><span class="chip ${m.status==='sub'?'s-sub':'s-absent'}">${m.status==='sub'?'代理':'請假'}</span></div>`).join('')}
+        <div class="diff-row" style="grid-template-columns:1fr auto"><small style="color:var(--muted)">寫入 SeatAssignment.participationId，並記錄 ActivityLog（actor：你）</small><button type="button" class="btn btn-primary" id="doApply">套用 ${list.length} 筆變更</button></div></div>` : '';
+    }
+    renderSeatmap($('#seatmapEdit'));
+    const rules = [];
+    if (!state.applied){
+      intents().forEach(m => rules.push(['var(--amber)', m.status==='sub'?`${m.name} 已登記代理，座位仍是本人`:`${m.name} 已請假，仍被排在 ${m.seat}`, m.intentAt]));
+    }
+    rules.push(['var(--green)','來賓與執事前後相鄰','5 組配對皆符合']);
+    rules.push(['var(--green)','主持團 5 位皆已就位','主席、副主席、財務秘書、活動協調、教育協調']);
+    rules.push(['var(--grey)','產業鏈同組會員相鄰','建議：A2 品牌組可再集中（提示，非錯誤）']);
+    $('#rules').innerHTML = rules.map(([c,t,s])=>`<div class="todo-item"><span class="sev" style="background:${c}"></span><div><b>${esc(t)}</b><small>${esc(s)}</small></div></div>`).join('');
+    const score = state.applied ? 96 : 96 - intents().length*6;
+    $('#ruleScore').innerHTML = `<b style="font-size:18px">${score}</b><span style="color:var(--faint)"> / 100</span>`;
+  }
+  document.addEventListener('click', e => {
+    if (e.target.closest('#previewApply')){ state.preview = !state.preview; renderSeating(); }
+    if (e.target.closest('#doApply')){ applyIntents(); }
+    if (e.target.closest('#undoApply')){ state.applied=false; state.preview=false; renderAll(); }
+  });
+  function applyIntents(){ state.applied = true; state.preview = false; renderAll(); }
+
+  /* ---------- star poll ---------- */
+  function renderStar(){
+    const c = counts();
+    const eligible = c.present + c.late + c.subArrived + c.guestsArrived;
+    const votes = [['葉思妤',9],['曾柏翰',6],['王柏安',4],['林雅婷',3],['郭建宏',2]];
+    const cast = votes.reduce((a,[,v])=>a+v,0);
+    const max = votes[0][1];
+    $('#pollRows').innerHTML = votes.map(([n,v],i)=>`<div class="poll-row"><span class="rank num">${i+1}</span><b>${n}</b><div class="track"><div class="fill" style="width:${v/max*100}%"></div></div><span class="num" style="text-align:right;font-weight:700">${v}</span></div>`).join('');
+    $('#pollKv').innerHTML = [
+      ['資格','已簽到者一人一票'],['投票憑證','簽到時發放（一次性）'],['候選人',`已到場會員 ${c.present + c.late} 位`],
+      ['已投票',`<span class="num">${cast} / ${eligible}</span>`],['結果公開','結束後公開前三名'],['Poll kind','<span class="mono">star</span>'],
+    ].map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
+    $('#pollBar').innerHTML = `<i style="width:${cast/eligible*100}%;background:var(--accent)"></i>`;
+  }
+
+  /* ---------- lottery ---------- */
+  const PRIZES = [
+    {name:'精品咖啡禮盒', qty:2, sponsor:'方以晴 贊助（來賓）'},
+    {name:'商業形象照拍攝券', qty:1, sponsor:'黃詩涵 贊助'},
+    {name:'餐廳雙人餐券', qty:3, sponsor:'楊佩珊 贊助'},
+  ];
+  function lotteryPool(){
+    const p = [];
+    if (state.poolFilter.member) members.filter(m=>m.status==='present'||m.status==='late').forEach(m=>p.push({name:m.name, type:'會員'}));
+    if (state.poolFilter.sub) members.filter(m=>m.status==='sub' && m.proxy.arrived).forEach(m=>p.push({name:m.proxy.name, type:'代理人'}));
+    if (state.poolFilter.guest) GUESTS.filter(g=>g.arrived).forEach(g=>p.push({name:g.name, type:'來賓'}));
+    const ex = $('#excludeWinners');
+    return (ex && ex.checked) ? p.filter(x => !state.winners.some(w=>w.name===x.name)) : p;
+  }
+  function renderLottery(){
+    const pz = PRIZES[state.prize];
+    const won = state.winners.filter(w=>w.prize===state.prize).length;
+    $('#prizes').innerHTML = PRIZES.map((p,i)=>{
+      const w = state.winners.filter(x=>x.prize===i).length;
+      return `<button type="button" class="prize-item" data-prize="${i}" aria-pressed="${state.prize===i}"><div><b>${p.name}</b><small>${p.sponsor}</small></div><span class="num" style="color:var(--muted)">${w}/${p.qty}</span>${w>=p.qty?'<span class="chip s-present">已抽完</span>':'<span class="chip s-expected">待抽</span>'}</button>`;
+    }).join('');
+    const pool = lotteryPool();
+    $('#poolCount').textContent = pool.length + ' 人';
+    const f = state.poolFilter;
+    $('#poolFilters').innerHTML = [['member','會員'],['guest','來賓'],['sub','代理人']].map(([k,l])=>`<button type="button" class="fchip" data-pool="${k}" aria-pressed="${f[k]}">${l}</button>`).join('');
+    if (!state.drawing){
+      $('#stagePrize').textContent = pz.name + `（第 ${Math.min(won+1,pz.qty)} / ${pz.qty} 名）`;
+      if (!state.lastWinner || state.lastWinner.prize!==state.prize){ $('#stageWho').textContent = won>=pz.qty ? '已抽完' : '準備開抽'; $('#stageSub').textContent = `抽獎池 ${pool.length} 人`; }
+    }
+    const full = won >= pz.qty;
+    $('#drawConfirm').innerHTML = state.confirming
+      ? `<div class="confirm"><div><b>確認開抽「${pz.name}」？</b><small style="display:block;color:var(--muted)">抽獎池 ${pool.length} 人，結果會寫入紀錄且無法重抽。</small></div><button type="button" class="btn" id="drawCancel">取消</button><button type="button" class="btn btn-primary" id="drawGo">確認開抽</button></div>`
+      : `<button type="button" class="btn btn-primary" id="drawAsk" style="justify-content:center;width:100%;padding:11px" ${full||state.drawing||!pool.length?'disabled':''}>${full?'此獎項已抽完':'開抽'}</button>`;
+  }
+  function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+  function hash(str){let h=2166136261;for(const ch of str){h^=ch.codePointAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(16).padStart(8,'0')}
+  function draw(){
+    const pool = lotteryPool(); if (!pool.length) return;
+    const seed = (Date.now() ^ 0x5eed) >>> 0;
+    const rnd = mulberry32(seed);
+    const pick = pool[Math.floor(rnd()*pool.length)];
+    const snap = hash(pool.map(p=>p.name).join('|'));
+    state.drawing = true; state.confirming = false; renderLottery();
+    const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let n = 0; const steps = reduce ? 1 : 22;
+    const tick = () => {
+      n++;
+      if (n < steps){ $('#stageWho').textContent = pool[Math.floor(Math.random()*pool.length)].name; setTimeout(tick, 40 + n*6); return; }
+      $('#stageWho').textContent = pick.name;
+      $('#stageSub').textContent = `${pick.type} · 抽獎池 ${pool.length} 人`;
+      state.winners.push({name:pick.name, prize:state.prize});
+      state.lastWinner = {prize:state.prize};
+      state.drawing = false;
+      const t = new Date(); const hh = String(t.getHours()).padStart(2,'0'), mm = String(t.getMinutes()).padStart(2,'0');
+      const log = $('#drawLog');
+      if (log.textContent.trim()==='尚未開抽') log.innerHTML='';
+      log.insertAdjacentHTML('afterbegin', `<span>${hh}:${mm} lottery.draw prize="${esc(PRIZES[state.prize].name)}" winner="${esc(pick.name)}" pool=${pool.length} snapshot=${snap} seed=${seed}</span>`);
+      renderLottery();
+    };
+    tick();
+  }
+  document.addEventListener('click', e => {
+    const p = e.target.closest('[data-prize]'); if (p){ state.prize = +p.dataset.prize; state.confirming=false; renderLottery(); }
+    const pf = e.target.closest('[data-pool]'); if (pf){ state.poolFilter[pf.dataset.pool] = !state.poolFilter[pf.dataset.pool]; renderLottery(); }
+    if (e.target.closest('#drawAsk')){ state.confirming = true; renderLottery(); }
+    if (e.target.closest('#drawCancel')){ state.confirming = false; renderLottery(); }
+    if (e.target.closest('#drawGo')){ draw(); }
+  });
+  $('#excludeWinners').addEventListener('change', renderLottery);
+
+  /* ---------- scorecard ---------- */
+  const SC = [
+    ['王柏安',0,0,14,4,12,6],['李品妤',0,1,9,3,10,4],['陳冠宇',1,0,11,2,8,5],['林雅婷',0,0,7,5,9,6],
+    ['張家豪',2,1,5,1,4,2],['黃詩涵',0,0,12,2,11,5],['吳承翰',1,2,6,2,6,3],['劉怡君',0,1,8,3,7,4],
+    ['潘振宇',1,1,8,3,2,4],['呂芷萱',0,0,7,2,2,3],['許志明',0,3,6,2,5,3],['羅冠霖',3,1,2,0,1,1],
+    ['簡若瑜',2,0,3,1,3,2],['游博凱',4,1,1,0,1,0],['曾柏翰',0,0,10,6,9,4],['葉思妤',0,1,8,2,8,5],
+  ];
+  const scoreOf = ([,ab,sub,ref,vis,o2o,ceu]) => Math.max(0, Math.min(100, Math.round(
+    (ab===0?20:ab===1?15:ab===2?5:0) + Math.min(ref,12)/12*25 + Math.min(vis,5)/5*20 + Math.min(o2o,10)/10*20 + Math.min(ceu,6)/6*15 - Math.max(0,sub-2)*3)));
+  const lightOf = s => s>=70?'green':s>=50?'yellow':s>=30?'red':'grey';
+  const LIGHT_LABEL = {green:'綠燈', yellow:'黃燈', red:'紅燈', grey:'灰燈'};
+  const TREND = {'潘振宇':'↓ 由綠轉黃','呂芷萱':'↓ 由綠轉黃','曾柏翰':'↑','羅冠霖':'↓'};
+  function distCounts(){ const d={green:0,yellow:0,red:0,grey:0}; SC.forEach(r=>d[lightOf(scoreOf(r))]++); return d; }
+  function renderDist(el){
+    const d = distCounts(); const n = SC.length;
+    const col = {green:['var(--green)','var(--surface)'],yellow:['var(--amber)','var(--surface)'],red:['var(--red)','var(--surface)'],grey:['var(--grey)','var(--surface)']};
+    el.innerHTML = Object.entries(d).filter(([,v])=>v).map(([k,v])=>`<div style="flex:${v};background:${col[k][0]};color:${col[k][1]}" title="${LIGHT_LABEL[k]} ${v}">${LIGHT_LABEL[k]} ${v}</div>`).join('');
+  }
+  function renderScore(){
+    renderDist($('#scoreDist'));
+    const d = distCounts();
+    $('#lightFilters').innerHTML = [['all','全部 '+SC.length],...Object.entries(d).map(([k,v])=>[k,LIGHT_LABEL[k]+' '+v])].map(([k,l])=>`<button type="button" class="fchip" data-light="${k}" aria-pressed="${state.light===k}">${l}</button>`).join('');
+    const rows = SC.map(r=>({r, s:scoreOf(r)})).filter(x=>state.light==='all'||lightOf(x.s)===state.light).sort((a,b)=>b.s-a.s);
+    $('#scoreBody').innerHTML = rows.map(({r,s})=>{
+      const [n,ab,sub,ref,vis,o2o,ceu] = r; const l = lightOf(s); const m = byName(n);
+      return `<tr><td><b>${n}</b></td><td style="color:var(--muted)">${m?m.ind:''}</td><td class="num">${ab}</td><td class="num">${sub}</td><td class="num">${ref}</td><td class="num">${vis}</td><td class="num">${o2o}</td><td class="num">${ceu}</td><td class="num"><b>${s}</b></td><td><span class="light l-${l}"><i></i>${LIGHT_LABEL[l]}</span></td><td style="color:var(--muted)">${TREND[n]||'—'}</td></tr>`;
+    }).join('');
+  }
+  document.addEventListener('click', e => { const l = e.target.closest('[data-light]'); if (l){ state.light = l.dataset.light; renderScore(); } });
+
+  /* ---------- member ---------- */
+  let intent = 'sub';
+  $$('[data-intent]').forEach(b => b.addEventListener('click', () => {
+    intent = b.dataset.intent;
+    $$('[data-intent]').forEach(x => x.setAttribute('aria-pressed', String(x===b)));
+    $('#proxyField').hidden = intent!=='sub';
+    $('#intentMsg').textContent = '';
+  }));
+  $('#intentSubmit').addEventListener('click', () => {
+    const msg = intent==='sub' ? `已登記代理人「${$('#proxyInput').value || '代理人'}」。幹部的座位表會立即顯示這筆登記。` : intent==='absent' ? '已登記請假。幹部的座位表會立即顯示這筆登記。' : '已登記會出席。';
+    $('#intentMsg').textContent = '（原型）' + msg;
+  });
+
+  /* ---------- routes ---------- */
+  $('#tree').innerHTML = [
+    '<span class="g">src/app/</span>',
+    '├─ <span class="g">(public)/</span>',
+    '│  ├─ <span class="new">e/[eventKey]/</span>            <span class="c">公開活動頁 ← /w/[slug]</span>',
+    '│  │  ├─ <span class="new">check-in/</span>             <span class="c">QR 簽到（會員/代理人/來賓）</span>',
+    '│  │  ├─ vote/                  <span class="c">長冠軍之星</span>',
+    '│  │  └─ <span class="new">lottery/stage/</span>        <span class="c">抽獎大螢幕</span>',
+    '│  └─ <span class="new">leave/</span>                   <span class="c">請假/代理 ← /pre-leave</span>',
+    '├─ <span class="g">(member)/</span><span class="new">me/</span>                <span class="c">我的座位、燈號、檔案</span>',
+    '├─ <span class="g">(console)/</span><span class="new">console/</span>           <span class="c">layout 含 AI Copilot</span>',
+    '│  ├─ events/                  <span class="c">← /seats</span>',
+    '│  │  └─ [eventKey]/           <span class="c">活動中控 ← /admin/events/[weekId]</span>',
+    '│  │     ├─ <span class="new">attendance/</span>        <span class="c">出席與代理</span>',
+    '│  │     ├─ seating/           <span class="c">← /seats/[weekId]</span>',
+    '│  │     ├─ polls/             <span class="c">長冠軍之星</span>',
+    '│  │     ├─ <span class="new">lottery/</span>           <span class="c">禮物抽獎</span>',
+    '│  │     └─ exports/',
+    '│  ├─ <span class="new">members/[memberId]/</span>',
+    '│  ├─ <span class="new">scorecard/</span>              <span class="c">綠燈會員</span>',
+    '│  ├─ <span class="new">network/  one-to-ones/</span>  <span class="c">規劃</span>',
+    '│  ├─ templates/  settings/',
+    '│  └─ <span class="new">ai/</span>                     <span class="c">對話、建議佇列、執行紀錄</span>',
+    '└─ api/',
+    '   ├─ <span class="new">v1/**</span>                    <span class="c">由 capability registry 產生</span>',
+    '   ├─ <span class="new">public/v1/events/[eventKey]/</span>',
+    '   └─ <span class="new">mcp/</span>                     <span class="c">給 Super 商會 AI</span>',
+  ].join('\n');
+  const PH = [
+    ['MIG-000','清理與安全','移除寫死密碼、白名單預設拒絕、合併重複 API','now'],
+    ['MIG-001','會員名冊 SSOT','靜態名冊 → DB Person / Membership',''],
+    ['MIG-002','出席與代理 SSOT','新增 Participation，backfill，雙寫期',''],
+    ['MIG-003','座位 ↔ 代理連動','預覽變更、一鍵套用、不再手寫 layout 檔',''],
+    ['MIG-004','Console 外殼','新路由掛既有元件，新舊並存',''],
+    ['MIG-005','路由切換','308 轉址；公開網址永久保留',''],
+    ['MIG-006','API v1 + registry','一份能力，UI / REST / AI 共用',''],
+    ['MIG-007','Event 泛化 + 抽獎','非週會活動、抽獎紀錄可驗證',''],
+    ['MIG-008','綠燈會員','計分快照、PALMS 匯入',''],
+    ['MIG-009','商會 AI v0','Copilot 面板、MCP、第一批情境',''],
+  ];
+  $('#phases').innerHTML = PH.map(([id,t,s,now])=>`<div class="phase"><span class="mono">${id}</span><div><b>${t}</b><small>${s}</small></div>${now?'<span class="chip s-sub">下一步</span>':''}</div>`).join('');
+  $('#mapBody').innerHTML = [
+    ['/w/:slug','/e/:eventKey','308','永久（QR code）'],['/w/:slug/vote','/e/:eventKey/vote','308','永久'],['/pre-leave','/leave','308','永久'],
+    ['/seats','/console/events','308','6 個月'],['/seats/:weekId','/console/events/:weekId/seating','308','6 個月'],
+    ['/seats/print','/console/events','307','3 個月'],['/admin','/console','308','6 個月'],['/admin/events/:weekId','/console/events/:weekId','308','6 個月'],
+    ['/admin/api/**','/api/admin/** → /api/v1/**','alias','零呼叫 4 週後刪除'],
+  ].map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('');
+
+  /* ---------- copilot ---------- */
+  const CP = {
+    home:{ctx:'工具箱首頁', tools:['events.today'], msgs:[
+      {ai:'早安。今天 07:00 例會，目前有兩件事需要你注意：', tool:['events.get(eventKey="2026-10-01")','read']},
+      {ai:'1. 4 筆請假／代理還沒套用到座位表。\n2. 代理人陳先生（代理許志明）還沒簽到。', action:'apply'},
+    ], sug:['誰還沒簽到？','這週有哪些來賓？','本月誰轉黃燈？']},
+    event:{ctx:'活動 <code>2026-10-01</code> · 出席與代理', msgs:[
+      {ai:'目前會員已簽到 24 位、未到 4 位。代理人陳先生登記後仍未簽到。', tool:['attendance.get(eventKey="2026-10-01")','read']},
+      {ai:'要我用 LINE 提醒許志明確認代理人嗎？這是對外發送，需要你確認。', action:'remind'},
+    ], sug:['列出未到會員','代理人都到了嗎？','產生出席報表']},
+    seating:{ctx:'活動 <code>2026-10-01</code> · 座位表', msgs:[
+      {ai:'我比對了出席登記和座位表，有 4 個座位需要調整。', tool:['seating.applyIntents(eventKey="2026-10-01", dryRun=true)','write']},
+      {ai:'套用後代理人坐原會員位置，請假的座位留空。要套用嗎？', action:'apply'},
+    ], sug:['從上週產生草稿','把產業鏈 A2 排在一起','還有哪些規則警告？']},
+    star:{ctx:'活動 <code>2026-10-01</code> · 長冠軍之星', msgs:[
+      {ai:'目前 24 票，葉思妤暫居第一。還有 6 位已簽到者未投票。', tool:['polls.results(eventKey="2026-10-01", kind="star")','read']},
+    ], sug:['誰還沒投？','結束投票後公布前三名','歷屆得主']},
+    lottery:{ctx:'活動 <code>2026-10-01</code> · 禮物抽獎', msgs:[
+      {ai:'抽獎池已依簽到名單準備好。開抽屬於不可撤銷的操作，我只能準備，按下開抽的必須是你。', tool:['lottery.preparePool(eventKey="2026-10-01")','read']},
+    ], sug:['來賓也要進抽獎池嗎？','匯出中獎名單','驗證上一次抽獎']},
+    scorecard:{ctx:'綠燈會員 · 近 6 個月', msgs:[
+      {ai:'潘振宇、呂芷萱本月由綠轉黃，主要是 1-2-1 次數偏低（各 2 次）。', tool:['scorecards.list(period="2026-04..2026-09")','read']},
+      {ai:'我可以依產業互補，幫他們各配 2 位 1-2-1 對象，產生草稿給你看。', action:'o2o'},
+    ], sug:['誰最接近綠燈？','匯入最新 PALMS','按分組看燈號']},
+    member:{ctx:'會員視角預覽', msgs:[
+      {ai:'面對會員時，AI 只拿得到該會員自己的資料與公開統計，權限和會員本人相同。', tool:['me.get()','read']},
+    ], sug:['我這週坐哪？','幫我登記代理人','我的燈號怎麼提升？']},
+    routes:{ctx:'路由地圖', msgs:[
+      {ai:'每個 command 都宣告 permission 與 risk。read 直接執行；write 先給預覽；irreversible（開抽、發送通知、刪除）一定要人按。', tool:['capabilities.list()','read']},
+    ], sug:['列出所有 capability','MIG-002 要改哪些檔案？']},
+  };
+  const RISK = {read:['risk-read','讀取'], write:['risk-write','寫入・需確認'], irr:['risk-irr','不可撤銷']};
+  function actionCard(kind){
+    if (kind==='apply'){
+      if (state.applied) return `<div class="action-card"><b>已套用 4 筆座位變更</b><small>ActivityLog 已記錄 actor=你、agentRunId=ar_1001。</small></div>`;
+      return `<div class="action-card"><span class="toolcall"><span class="risk risk-write">寫入・需確認</span>seating.applyIntents</span><b>套用 4 筆請假／代理到座位表</b><small>3 位代理、1 位請假</small><div class="row"><button type="button" class="btn" data-go="seating">看預覽</button><button type="button" class="btn btn-primary" data-cp="apply">套用</button></div></div>`;
+    }
+    if (kind==='remind'){
+      if (state.reminded) return `<div class="action-card"><b>原型示意</b><small>上線後這裡會送出 LINE 訊息給許志明，並記錄在 ActivityLog。</small></div>`;
+      return `<div class="action-card"><span class="toolcall"><span class="risk risk-irr">不可撤銷</span>notify.line</span><b>提醒許志明確認代理人</b><small>訊息：「陳先生還沒簽到，請確認是否能準時出席。」</small><div class="row"><button type="button" class="btn">修改文字</button><button type="button" class="btn btn-primary" data-cp="remind">確認發送</button></div></div>`;
+    }
+    if (kind==='o2o') return `<div class="action-card"><span class="toolcall"><span class="risk risk-write">寫入・需確認</span>oneToOnes.suggest</span><b>產生 1-2-1 配對草稿</b><small>草稿只有你看得到，確認後才通知會員。</small><div class="row"><button type="button" class="btn btn-primary" data-cp="o2o">產生草稿</button></div></div>`;
+    return '';
+  }
+  let extra = {};
+  function renderCopilot(){
+    const v = state.view || 'home'; const c = CP[v];
+    $('#cpCtx').innerHTML = `目前上下文：${c.ctx}`;
+    const base = c.msgs.map(m => `<div class="msg ai">${m.tool?`<span class="toolcall"><span class="risk ${RISK[m.tool[1]==='write'?'write':m.tool[1]][0]}">${RISK[m.tool[1]==='write'?'write':m.tool[1]][1]}</span>${esc(m.tool[0])}</span>`:''}<div style="white-space:pre-line">${esc(m.ai)}</div>${m.action?actionCard(m.action):''}</div>`).join('');
+    $('#cpBody').innerHTML = base + (extra[v]||[]).join('');
+    $('#cpSuggest').innerHTML = c.sug.map(s=>`<button type="button" data-ask="${esc(s)}">${esc(s)}</button>`).join('');
+    $('#cpBody').scrollTop = $('#cpBody').scrollHeight;
+  }
+  function ask(q){
+    const v = state.view || 'home';
+    (extra[v] = extra[v] || []).push(`<div class="msg user">${esc(q)}</div>`, `<div class="msg ai"><span class="toolcall"><span class="risk risk-read">讀取</span>capabilities.route(q)</span><div>（原型示意）上線後這裡會從 capability registry 選出合適的工具執行，並把結果和來源列在這裡。</div></div>`);
+    renderCopilot();
+  }
+  document.addEventListener('click', e => {
+    const a = e.target.closest('[data-ask]'); if (a) ask(a.dataset.ask);
+    const cp = e.target.closest('[data-cp]');
+    if (cp){
+      if (cp.dataset.cp==='apply') applyIntents();
+      if (cp.dataset.cp==='remind'){ state.reminded = true; renderCopilot(); }
+      if (cp.dataset.cp==='o2o'){ const v=state.view; (extra[v]=extra[v]||[]).push('<div class="msg ai"><div>（原型示意）已產生草稿：潘振宇 ↔ 何佳蓉（室內設計 × 水電工程）、呂芷萱 ↔ 王柏安。等你確認後再通知。</div></div>'); renderCopilot(); }
+    }
+  });
+  $('#cpForm').addEventListener('submit', e => { e.preventDefault(); const q = $('#cpInput').value.trim(); if (!q) return; $('#cpInput').value=''; ask(q); });
+
+  function renderAll(){ renderHome(); renderEvent(); renderSeating(); renderStar(); renderLottery(); renderScore(); renderCopilot(); }
+  renderAll();
+  const h = (location.hash||'').slice(1);
+  go(CRUMBS[h] ? h : 'home');
+})();
+</script>

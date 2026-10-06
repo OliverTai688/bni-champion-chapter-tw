@@ -17,6 +17,7 @@ The project is currently a weekly BNI seating workspace. The next direction is a
 | `01_product-requirements` | Product requirements and product decisions |
 | `02_architecture-and-rules` | System boundaries, domain rules, DTO contracts, privacy rules |
 | `03_feature-reference` | Current feature behavior and implemented references |
+| `04_ui-proposals` | Interface proposals and clickable prototypes |
 | `05_execution-plans` | Batch plans and phased implementation plans |
 | `08_acceptance-and-qa` | Acceptance criteria, QA scenarios, evidence requirements |
 | `2_agent-input` | Agent loop instructions, generated plans, reports, screenshots |
@@ -48,6 +49,15 @@ Existing root-level docs remain references until a cleanup batch moves them.
 - `docs/08_acceptance-and-qa/ACC-001_live-seat-map-attendance-voting-acceptance.md`
 - `docs/08_acceptance-and-qa/ACC-002_mongodb-prisma-r2-acceptance.md`
 - `docs/08_acceptance-and-qa/ACC-003_weekly-public-page-and-star-voting-acceptance.md`
+
+## Chamber Toolbox Planning Set
+
+- `docs/02_architecture-and-rules/ARC-006_chamber-toolbox-ssot-and-router-architecture.md`
+- `docs/05_execution-plans/PLN-004_chamber-toolbox-router-migration-plan.md`
+- `docs/05_execution-plans/PLN-005_router-v2-and-page-task-plan.md`
+- `docs/02_architecture-and-rules/ARC-007_toolbox-implementation-conventions.md`
+- `docs/08_acceptance-and-qa/ACC-004_chamber-toolbox-crud-acceptance.md`
+- `docs/04_ui-proposals/UIP-001_chamber-toolbox-console.html`
 
 ## Agent Loop References
 

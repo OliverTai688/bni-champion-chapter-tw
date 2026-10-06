@@ -3,8 +3,8 @@ import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 
 export const metadata: Metadata = {
-  title: "Take Seat | 智慧排位工具",
-  description: "專業的座位安排工具，輕鬆搞定婚宴、會議與各式活動的座位安排。讓每一位嘉賓都賓至如歸。",
+  title: "長冠軍工具箱",
+  description: "BNI 長冠軍分會的例會工具：座位、簽到與代理、長冠軍之星、禮物抽獎、綠燈會員。",
 };
 
 export default function RootLayout({

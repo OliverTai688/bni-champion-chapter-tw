@@ -102,6 +102,10 @@ model MeetingSession {
   publicSlug   String?              @unique
   publicStatus PublicEventStatus    @default(draft)
   publicConfig Json?
+  // Optional on purpose: existing documents have no value (null = weekly_meeting).
+  eventType    String?
+  location     String?
+  startsAt     String?
   metadata     Json?
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
@@ -109,6 +113,9 @@ model MeetingSession {
   seatMaps      SeatMap[]
   operationLogs OperationLog[]
   livePolls     LivePoll[]
+  participations Participation[]
+  gifts         Gift[]
+  seatPlan      EventSeatPlan?
 
   @@index([date])
   @@index([status])
@@ -122,12 +129,25 @@ model Member {
   roles       String[]
   note        String?
   isActive    Boolean  @default(true)
+  industry    String?
+  company     String?
+  phone       String?
+  email       String?
+  intro       String?
+  targetCustomers String?
+  aliases     String[]
+  // 'member' = chapter member. Null = name created from a seat map (guest, proxy, unknown).
+  category    String?
+  joinedAt    DateTime?
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   assignments SeatAssignment[]
   pollOptions  LivePollOption[]
+  participations Participation[]
+  roleTerms    RoleTerm[]
+  palmsRows    PalmsMemberRow[]
 
   @@index([isActive])
 }
@@ -313,6 +333,7 @@ model LivePollVote {
   option             LivePollOption @relation(fields: [optionId], references: [id])
   tokenHash          String
   anonymousVoterHash String?
+  comment            String?
   metadata           Json?
   submittedAt        DateTime       @default(now())
 
@@ -338,4 +359,209 @@ model Asset {
   @@unique([bucket, key])
   @@index([purpose])
   @@index([visibility])
+}
+
+// ---------------------------------------------------------------------------
+// Chamber toolbox (PLN-005). All models below are additive.
+// ---------------------------------------------------------------------------
+
+enum ParticipationKind {
+  member
+  guest
+}
+
+enum ParticipationStatus {
+  expected
+  present
+  late
+  absent
+  medical
+  substitute
+}
+
+// Event x person. Single source of truth for attendance intent and check-in.
+// `key` is "m:<memberId>" for members and "g:<random>" for guests so the
+// compound unique index never has to hold a null.
+model Participation {
+  id               String              @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId        String              @db.ObjectId
+  session          MeetingSession      @relation(fields: [sessionId], references: [id])
+  key              String
+  kind             ParticipationKind   @default(member)
+  memberId         String?             @db.ObjectId
+  member           Member?             @relation(fields: [memberId], references: [id])
+  displayName      String
+  status           ParticipationStatus @default(expected)
+  substituteName   String?
+  substituteArrivedAt DateTime?
+  intentSource     String?
+  intentAt         DateTime?
+  checkedInAt      DateTime?
+  checkInMethod    String?
+  guestIndustry    String?
+  guestCompany     String?
+  hostMemberId     String?             @db.ObjectId
+  invitedByMemberId String?            @db.ObjectId
+  note             String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@unique([sessionId, key])
+  @@index([sessionId, status])
+  @@index([memberId])
+}
+
+model RoleTerm {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  memberId  String    @db.ObjectId
+  member    Member    @relation(fields: [memberId], references: [id])
+  role      String
+  startsAt  DateTime
+  endsAt    DateTime?
+  note      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([memberId])
+  @@index([role])
+}
+
+model Gift {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId     String         @db.ObjectId
+  session       MeetingSession @relation(fields: [sessionId], references: [id])
+  name          String
+  quantity      Int            @default(1)
+  donorMemberId String?        @db.ObjectId
+  donorName     String?
+  note          String?
+  position      Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  awards GiftAward[]
+
+  @@index([sessionId])
+}
+
+model GiftAward {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  giftId                String   @db.ObjectId
+  gift                  Gift     @relation(fields: [giftId], references: [id])
+  winnerParticipationId String?  @db.ObjectId
+  winnerName            String
+  winnerKind            String?
+  method                String   @default("random")
+  status                String   @default("awarded")
+  poolSize              Int?
+  seed                  String?
+  note                  String?
+  editedBy              String?
+  drawnAt               DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([giftId])
+  @@index([status])
+}
+
+model PalmsPeriod {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  from        DateTime
+  to          DateTime
+  chapterName String?
+  exportedAt  DateTime?
+  exportedBy  String?
+  isPartial   Boolean  @default(false)
+  version     Int      @default(1)
+  isCurrent   Boolean  @default(true)
+  meetingCount Int     @default(0)
+  fileName    String?
+  totals      Json?
+  importedBy  String?
+  createdAt   DateTime @default(now())
+
+  rows PalmsMemberRow[]
+
+  @@index([from, to])
+  @@index([isCurrent])
+}
+
+model PalmsMemberRow {
+  id                       String      @id @default(auto()) @map("_id") @db.ObjectId
+  periodId                 String      @db.ObjectId
+  period                   PalmsPeriod @relation(fields: [periodId], references: [id])
+  memberId                 String?     @db.ObjectId
+  member                   Member?     @relation(fields: [memberId], references: [id])
+  rawName                  String
+  present                  Int         @default(0)
+  absent                   Int         @default(0)
+  late                     Int         @default(0)
+  medical                  Int         @default(0)
+  substitute               Int         @default(0)
+  referralsGivenInside     Int         @default(0)
+  referralsGivenOutside    Int         @default(0)
+  referralsReceivedInside  Int         @default(0)
+  referralsReceivedOutside Int         @default(0)
+  visitors                 Int         @default(0)
+  oneToOnes                Float       @default(0)
+  tyfcb                    Float       @default(0)
+  ceu                      Int         @default(0)
+
+  @@index([periodId])
+  @@index([memberId])
+}
+
+model ScoringRule {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  version   Int      @unique
+  name      String
+  isActive  Boolean  @default(false)
+  config    Json
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model Venue {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  address   String?
+  widthM    Float    @default(20)
+  heightM   Float    @default(14)
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  layouts VenueLayout[]
+}
+
+model VenueLayout {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  venueId   String   @db.ObjectId
+  venue     Venue    @relation(fields: [venueId], references: [id])
+  name      String
+  kind      String   @default("custom")
+  objects   Json
+  seatCount Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([venueId])
+}
+
+// Spatial seat plan of one event: a snapshot of a layout plus who sits where.
+model EventSeatPlan {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId   String         @unique @db.ObjectId
+  session     MeetingSession @relation(fields: [sessionId], references: [id])
+  layoutId    String?        @db.ObjectId
+  venueName   String?
+  widthM      Float          @default(20)
+  heightM     Float          @default(14)
+  objects     Json
+  assignments Json
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
