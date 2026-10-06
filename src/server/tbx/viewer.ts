@@ -77,7 +77,7 @@ export async function getViewer(): Promise<Viewer> {
       };
       const now = new Date();
       const terms = await prisma.roleTerm.findMany({
-        where: { memberId: record.id, startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+        where: { memberId: record.id, startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { isSet: false } }, { endsAt: { gte: now } }] },
         select: { role: true },
       });
       activeRoles = terms.map((term) => term.role);

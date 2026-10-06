@@ -449,8 +449,11 @@ function buildBaseTemplateDraft(): NormalizedSeatingDraft {
   };
 }
 
+/** Latest event that actually has a seat map, so a freshly created empty event is skipped. */
 async function findLatestEventSeatMap() {
+  const withSeatMap = await prisma.seatMap.findMany({ select: { sessionId: true }, distinct: ['sessionId'] });
   const session = await prisma.meetingSession.findFirst({
+    where: { id: { in: withSeatMap.map((row) => row.sessionId) } },
     orderBy: { date: 'desc' },
     include: {
       seatMaps: {

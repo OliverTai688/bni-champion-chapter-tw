@@ -642,8 +642,10 @@ export default function SeatingArranger({
               <h2 className="mt-1 text-xl font-bold">{week.meetingLabel}</h2>
               <p className="mt-1 text-sm text-foreground/50">
                 {storageReady && lastSavedAt
-                  ? `本機草稿已保存：${new Date(lastSavedAt).toLocaleString('zh-TW')}`
-                  : '尚未建立本機草稿，保存後會留在此瀏覽器。'}
+                  ? `上次保存：${new Date(lastSavedAt).toLocaleString('zh-TW')}`
+                  : canSaveRemote && serverUpdatedAt
+                    ? `資料庫版本：${new Date(serverUpdatedAt).toLocaleString('zh-TW')}`
+                    : '尚未建立本機草稿，保存後會留在此瀏覽器。'}
               </p>
               {remoteSaveMessage && (
                 <p className={`mt-1 text-xs ${
@@ -677,16 +679,16 @@ export default function SeatingArranger({
             <ActionButton
               onClick={handleSave}
               icon={<Save className="h-4 w-4" />}
-              label={remoteSaveStatus === 'saving' ? '保存中...' : authStatus === 'authenticated' ? '保存並同步' : '保存本機'}
+              label={remoteSaveStatus === 'saving' ? '保存中...' : canSaveRemote ? '儲存' : authStatus === 'authenticated' ? '保存並同步' : '保存本機'}
               primary
               disabled={remoteSaveStatus === 'saving'}
             />
-            {authStatus === 'unauthenticated' && (
+            {!canSaveRemote && authStatus === 'unauthenticated' && (
               <ActionButton onClick={() => signIn('google')} icon={<Info className="h-4 w-4" />} label="登入同步" />
             )}
-            <ActionButton onClick={handleReset} icon={<RotateCcw className="h-4 w-4" />} label="重設本週" />
+            <ActionButton onClick={handleReset} icon={<RotateCcw className="h-4 w-4" />} label={canSaveRemote ? '還原已儲存版本' : '重設本週'} />
             <ActionButton onClick={handleExportCSV} icon={<Download className="h-4 w-4" />} label="匯出 CSV" />
-            <ActionButton onClick={handleExportPDF} icon={<Printer className="h-4 w-4" />} label="匯出 PDF" />
+            <ActionButton onClick={handleExportPDF} icon={<Printer className="h-4 w-4" />} label="列印 / PDF" />
             <ActionButton onClick={() => setEditorOpen(true)} icon={<Settings2 className="h-4 w-4" />} label="編輯規則" />
           </div>
         </section>

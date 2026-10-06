@@ -65,7 +65,7 @@ async function hasActiveLeadershipTerm(memberId: string) {
         memberId,
         role: { in: [...LEADERSHIP_ROLES] },
         startsAt: { lte: now },
-        OR: [{ endsAt: null }, { endsAt: { gte: now } }],
+        OR: [{ endsAt: null }, { endsAt: { isSet: false } }, { endsAt: { gte: now } }],
       },
       select: { id: true },
     })

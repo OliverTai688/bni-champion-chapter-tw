@@ -169,7 +169,7 @@ export function parseMemberProfileForm(formData: FormData): MemberProfileInput {
 }
 
 function activeTermWhere(now: Date): Prisma.RoleTermWhereInput {
-  return { startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { gte: now } }] };
+  return { startsAt: { lte: now }, OR: [{ endsAt: null }, { endsAt: { isSet: false } }, { endsAt: { gte: now } }] };
 }
 
 /** Chapter members for the leadership roster, each with the roles whose term covers today. */

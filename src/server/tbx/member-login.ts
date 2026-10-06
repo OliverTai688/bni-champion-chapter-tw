@@ -18,7 +18,7 @@ export async function issueMemberLoginLink(memberId: string, createdBy: string |
   if (!member || !member.isActive || member.category !== 'member') throw new Error('只能替在籍會員產生登入連結。');
 
   const now = new Date();
-  await prisma.memberLoginLink.updateMany({ where: { memberId, usedAt: null }, data: { usedAt: now } });
+  await prisma.memberLoginLink.updateMany({ where: { memberId, OR: [{ usedAt: null }, { usedAt: { isSet: false } }] }, data: { usedAt: now } });
 
   const token = randomBytes(24).toString('base64url');
   await prisma.memberLoginLink.create({
@@ -26,6 +26,8 @@ export async function issueMemberLoginLink(memberId: string, createdBy: string |
       memberId,
       tokenHash: hashToken(token),
       expiresAt: new Date(now.getTime() + LOGIN_LINK_TTL_DAYS * 86_400_000),
+      // Written explicitly: on MongoDB a `usedAt: null` filter does not match a missing field.
+      usedAt: null,
       createdBy,
     },
   });
@@ -41,7 +43,10 @@ export async function redeemMemberLoginLink(token: string) {
   if (link.expiresAt.getTime() < Date.now()) throw new Error('這個登入連結已過期，請向幹部重新索取。');
 
   // Mark used first so two taps on the same link cannot both log in.
-  const claimed = await prisma.memberLoginLink.updateMany({ where: { id: link.id, usedAt: null }, data: { usedAt: new Date() } });
+  const claimed = await prisma.memberLoginLink.updateMany({
+    where: { id: link.id, OR: [{ usedAt: null }, { usedAt: { isSet: false } }] },
+    data: { usedAt: new Date() },
+  });
   if (claimed.count !== 1) throw new Error('這個登入連結已經用過了。');
 
   const member = await prisma.member.findUnique({ where: { id: link.memberId }, select: { id: true, isActive: true, displayName: true } });
