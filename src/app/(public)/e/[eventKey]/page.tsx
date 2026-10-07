@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { findGridSeat, GridView } from '@/components/tbx/grid/grid-view';
-import { PlanWithRoles } from '@/components/tbx/plan/plan-with-roles';
+import { SeatFinder } from '@/components/tbx/plan/plan-with-roles';
 import { Stat } from '@/components/tbx/ui';
 import { eventTypeLabel, formatEventDate } from '@/lib/tbx/labels';
 import { prisma } from '@/server/db/prisma';
@@ -35,9 +35,7 @@ export default async function PublicEventPage({
   ]);
 
   const query = q.trim();
-  const found = query && plan ? plan.seats.find((seat) => seat.name?.includes(query) || seat.substituteName?.includes(query)) ?? null : null;
   const gridFound = query && !plan && grid ? findGridSeat(grid, query) : null;
-  const hasSeats = Boolean(plan || grid);
 
   return (
     <main className="mx-auto flex w-full max-w-[960px] flex-col gap-5 px-4 py-8">
@@ -75,11 +73,11 @@ export default async function PublicEventPage({
         <Stat value={summary.inRoom} label="現場總人數" tone="gold" />
       </div>
 
-      <section className="tb-card">
+      <section id="seats" className="tb-card scroll-mt-4">
         <div className="tb-card-head">
           <h2>座位</h2>
-          {hasSeats ? (
-            <form action={`/e/${key}`} className="flex items-center gap-2">
+          {grid && !plan ? (
+            <form action={`/e/${key}#seats`} className="flex items-center gap-2">
               <label className="sr-only" htmlFor="seat-q">
                 找座位
               </label>
@@ -92,14 +90,7 @@ export default async function PublicEventPage({
         </div>
         <div className="tb-card-body flex flex-col gap-3">
           {plan ? (
-            <>
-              {query ? (
-                <p className={found ? 'tb-form-ok' : 'tb-form-error'}>
-                  {found ? `${found.substituteName ?? found.name} 的座位：${found.label}` : `座位表上找不到「${query}」。請確認姓名，或詢問報到台。`}
-                </p>
-              ) : null}
-              <PlanWithRoles data={plan} highlightParticipationId={found?.participationId ?? null} showNames />
-            </>
+            <SeatFinder data={plan} initialQuery={query} />
           ) : grid ? (
             <>
               {query ? (
