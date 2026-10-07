@@ -44,12 +44,12 @@ function seatKind(seat) {
   return 'member';
 }
 
-const { LAYOUT_1001: LAYOUT_0813, ROSTER_1001: ROSTER_0813 } = loadTsModule('src/lib/layout-1001.ts');
+const { LAYOUT_1008: LAYOUT_0813, ROSTER_1008: ROSTER_0813 } = loadTsModule('src/lib/layout-1008.ts');
 
 const meetingSession = {
-  weekId: '2026-10-01',
-  date: '2026-10-01T00:00:00.000Z',
-  title: '115/10/01 座位表',
+  weekId: '2026-10-08',
+  date: '2026-10-08T00:00:00.000Z',
+  title: '115/10/08 座位表',
   chapterName: 'BNI 長冠軍分會',
   meetingLabel: '每週例會排座',
   source: 'seed',
@@ -176,6 +176,8 @@ async function writeSeed() {
       create: {
         ...meetingSession,
         date: new Date(meetingSession.date),
+        // publicSlug is unique; a null slug collides with other unpublished sessions.
+        publicSlug: `__draft__${meetingSession.weekId}`,
       },
       update: {
         date: new Date(meetingSession.date),
@@ -193,7 +195,7 @@ async function writeSeed() {
         create: {
           displayName,
           roles: [],
-          metadata: { importedFrom: 'layout-1001' },
+          metadata: { importedFrom: 'layout-1008' },
         },
         update: {
           isActive: true,

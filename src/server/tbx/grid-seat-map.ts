@@ -86,7 +86,7 @@ export async function getGridSeatView(weekId: string, sessionId: string): Promis
     else if (tag === 'guest') badge = assignment?.guestNumber ?? '來賓';
     else if (tag === 'host') badge = assignment?.hostFor ? `執·${assignment.hostFor}` : '執事';
     else if (tag === 'proxy') badge = '代理';
-    else if (tag === 'sound') badge = '音控';
+    else if (tag === 'sound') badge = meta.isDuty === true ? '值日・音控' : '音控';
     else if (tag === 'duty') badge = '值日生';
 
     const status = participation?.status ?? null;

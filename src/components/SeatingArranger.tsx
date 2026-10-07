@@ -144,7 +144,7 @@ function SortableSeat({
           <span className={`px-2 py-0.5 text-[9px] font-black text-white rounded-full shadow-lg uppercase tracking-tighter ${
             isSound ? 'bg-sky-500' : 'bg-emerald-500'
           }`}>
-            {isSound ? '音控' : '值日'}
+            {isSound && isDuty ? '值日・音控' : isSound ? '音控' : '值日'}
           </span>
         </div>
       )}

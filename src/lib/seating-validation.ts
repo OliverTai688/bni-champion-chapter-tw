@@ -65,7 +65,9 @@ export function validateSeatingWorkspace({
   }
 
   const soundIndex = items.findIndex((seat) => seat?.isSound);
-  if (soundIndex >= 0 && (rowOf(soundIndex) !== EXPECTED_SOUND.row || colOf(soundIndex) !== EXPECTED_SOUND.col)) {
+  // 值日生兼任音控時只有一個座位，以值日生基準位置為準。
+  const soundIsDuty = soundIndex >= 0 && Boolean(items[soundIndex]?.isDuty);
+  if (soundIndex >= 0 && !soundIsDuty && (rowOf(soundIndex) !== EXPECTED_SOUND.row || colOf(soundIndex) !== EXPECTED_SOUND.col)) {
     addIssue(
       issues,
       'warning',

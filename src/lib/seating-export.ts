@@ -12,6 +12,7 @@ function seatKind(seat: SeatData | null) {
   if (!seat) return '空位';
   if (seat.isGuest) return '來賓';
   if (seat.isHost) return '執事';
+  if (seat.isSound && seat.isDuty) return '值日生・音控';
   if (seat.isSound) return '音控';
   if (seat.isDuty) return '值日生';
   if (seat.role === '代理') return '代理';

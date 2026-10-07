@@ -104,7 +104,7 @@ function SeatCard({ seat, chainIds }: { seat: SeatData | null; chainIds?: string
           padding: '2px 8px', borderRadius: 99,
           lineHeight: 1.5,
         }}>
-          {isSound ? '音控' : '值日'}
+          {isSound && isDuty ? '值日・音控' : isSound ? '音控' : '值日'}
         </span>
       )}
 
