@@ -118,3 +118,12 @@ Validation (local dev DB, port 3217):
 - MANUAL_REQUIRED: `/me` "本場角色" needs a LINE or Google member login, not exercised.
 
 Pending (needs user approval): commit and deploy; then production data: 戴宇星 值日 + 音控 for 10/08, mentors 陳軾 -> 王柏詠 and 陳平 -> 蘇冠霖, role term 陳宜均 品牌成長, reorder the 10/08 plan assignments.
+
+## 8. Deployed (2026-10-07, user approved)
+
+- Pushed to `main`: `3166572` (10-08 layout), `b0b619f` (meeting roles).
+- Production data written: 戴宇星 值日 + 音控 for 10/08; mentors 陳軾 -> 王柏詠, 陳平 -> 蘇冠霖; role terms 陳宜均 品牌成長 and 陳志誠 導師 (both from 2026-10-01, open-ended); 10/08 plan assignments reordered. Logged as `meeting_roles_seeded`.
+- A 導師 role term marks a standing mentor without a mentee (陳志誠).
+- Production browser check, `/e/2026-10-08` at 375 px: switch on shows tags and a 10-line legend (品牌成長 陳宜均; 值日 and 音控 戴宇星; 導師 陳志誠、王柏詠、蘇冠霖), 45 seats, no sideways scroll, no console errors.
+- Not checked on production: `/console` pages and `/me` (need a leader or member login).
+- Correction from the user: 陳志誠 is 導師長 (an office, tag 長), not a plain 導師. Both terms now run 2026-10-01 to 2027-09-30 (Taiwan day bounds, same convention as the role-term dialog). Logged as `role_terms_updated`.

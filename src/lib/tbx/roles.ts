@@ -38,6 +38,8 @@ const LEADER_SHORT: Record<string, string> = {
   教育協調: '教',
   活動協調: '活',
   導師協調: '協',
+  // 長, not 導: 導 is the tag of an ordinary 導師.
+  導師長: '長',
   會員委員: '委',
   品牌成長: '品',
 };
