@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ActionForm, DialogButton, SubmitButton } from '@/components/tbx/client';
 import { STATUS_LABEL, type ParticipationStatusKey } from '@/lib/tbx/labels';
+import { EVENT_DUTIES } from '@/lib/tbx/roles';
 import { addGuestAction, updateGuestAction, updateParticipationAction } from './actions';
 
 export interface MemberOption {
@@ -17,6 +18,8 @@ export interface AttendanceRowData {
   substituteName: string | null;
   substituteArrived: boolean;
   note: string | null;
+  /** Duty keys held at this event (`Participation.roles`). */
+  duties: string[];
 }
 
 const MEMBER_STATUSES: ParticipationStatusKey[] = ['expected', 'present', 'late', 'substitute', 'absent', 'medical'];
@@ -65,6 +68,23 @@ export function EditAttendanceButton({ eventKey, row }: { eventKey: string; row:
               </label>
             </>
           ) : null}
+          <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+            <legend className="tb-label p-0">本場任務（可複選）</legend>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {EVENT_DUTIES.map((duty) => (
+                <label key={duty.key} className="flex items-center gap-2 text-sm" htmlFor={`duty-${duty.key}-${row.id}`}>
+                  <input
+                    id={`duty-${duty.key}-${row.id}`}
+                    name="duties"
+                    type="checkbox"
+                    value={duty.key}
+                    defaultChecked={row.duties.includes(duty.key)}
+                  />
+                  {duty.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <label className="tb-label" htmlFor={`note-${row.id}`}>
             備註
             <input id={`note-${row.id}`} name="note" className="tb-input" defaultValue={row.note ?? ''} maxLength={120} />

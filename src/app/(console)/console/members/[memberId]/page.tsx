@@ -10,11 +10,12 @@ import { toMemberFormValues } from '@/components/tbx/members/member-values';
 import { Card, Empty, PageHeader, Stat, StatusChip } from '@/components/tbx/ui';
 import { formatEventDate, taipeiDateKey } from '@/lib/tbx/labels';
 import { getMemberDetail, getMemberRosterMeta, type MemberDetail } from '@/server/tbx/member-admin';
+import { listChapterMembers } from '@/server/tbx/members';
 import { getLineBinding } from '@/server/tbx/member-identity';
 import { isLeader } from '@/server/tbx/viewer';
 
 const isObjectId = (value: string) => /^[a-f0-9]{24}$/i.test(value);
-import { setMemberActiveAction, setMemberCategoryAction, unbindLineAction } from '../actions';
+import { setMemberActiveAction, setMemberCategoryAction, setMemberMentorAction, unbindLineAction } from '../actions';
 
 type RoleTerm = MemberDetail['currentTerms'][number];
 
@@ -47,12 +48,14 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ m
   if (!(await isLeader())) return <LeaderOnlyNotice />;
 
   const { memberId } = await params;
-  const [detail, meta, lineBinding] = await Promise.all([
+  const [detail, meta, lineBinding, chapterMembers] = await Promise.all([
     getMemberDetail(memberId),
     getMemberRosterMeta(),
     isObjectId(memberId) ? getLineBinding(memberId) : null,
+    listChapterMembers(),
   ]);
   if (!detail) notFound();
+  const mentees = chapterMembers.filter((item) => item.mentorId === detail.member.id);
 
   const { member, currentTerms, upcomingTerms, pastTerms, recent, counts, starVotes } = detail;
   const isChapterMember = member.category === 'member';
@@ -220,6 +223,38 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ m
               </Link>
             </div>
           </Card>
+
+          {isChapterMember && member.isActive ? (
+            <Card title="新會員與導師">
+              <div className="flex flex-col gap-3">
+                <ActionForm action={setMemberMentorAction} className="flex flex-wrap items-end gap-3">
+                  <input type="hidden" name="memberId" value={member.id} />
+                  <label className="tb-label min-w-[200px] flex-1" htmlFor="member-mentor">
+                    導師
+                    <select id="member-mentor" name="mentorId" className="tb-select" defaultValue={member.mentorId ?? ''}>
+                      <option value="">沒有（不是新會員）</option>
+                      {chapterMembers
+                        .filter((item) => item.id !== member.id)
+                        .map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.displayName}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <SubmitButton>儲存</SubmitButton>
+                </ActionForm>
+                <p className="text-xs text-tb-faint">
+                  選了導師，{member.displayName} 會在座位表上標示為新會員，導師標示為導師。輔導期結束後改回「沒有」。
+                </p>
+                {mentees.length > 0 ? (
+                  <p className="text-sm">
+                    {member.displayName} 目前是 <b>{mentees.map((item) => item.displayName).join('、')}</b> 的導師。
+                  </p>
+                ) : null}
+              </div>
+            </Card>
+          ) : null}
 
           {isChapterMember && member.isActive ? (
             <Card title="會員登入">

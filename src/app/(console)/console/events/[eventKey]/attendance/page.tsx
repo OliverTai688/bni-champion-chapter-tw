@@ -2,9 +2,10 @@ import { leaderGuard } from '@/components/tbx/leader-guard';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ActionForm, AutoRefresh, ConfirmSubmit } from '@/components/tbx/client';
-import { Card, Empty, Stat, StatusChip } from '@/components/tbx/ui';
+import { Card, Empty, RoleChips, Stat, StatusChip } from '@/components/tbx/ui';
 import { formatTime } from '@/lib/tbx/labels';
 import { getEventByKey } from '@/server/tbx/events';
+import { getMeetingRoles } from '@/server/tbx/meeting-roles';
 import { listChapterMembers } from '@/server/tbx/members';
 import { getAttendance } from '@/server/tbx/participation';
 import { quickAttendanceAction, removeGuestAction } from './actions';
@@ -47,6 +48,7 @@ export default async function AttendancePage({
 
   const [{ rows, summary }, members] = await Promise.all([getAttendance(event.id), listChapterMembers()]);
   const memberOptions = members.map((member) => ({ id: member.id, name: member.displayName }));
+  const roles = await getMeetingRoles(event.id);
   const memberName = new Map(members.map((member) => [member.id, member.displayName]));
   const base = `/console/events/${encodeURIComponent(event.weekId)}/attendance`;
   const query = q.trim();
@@ -127,7 +129,10 @@ export default async function AttendancePage({
                   const arrived = row.status === 'present' || row.status === 'late';
                   return (
                     <tr key={row.id}>
-                      <td className="whitespace-nowrap font-bold">{row.displayName}</td>
+                      <td className="font-bold">
+                        <span className="whitespace-nowrap">{row.displayName}</span>
+                        <RoleChips roles={roles.get(row.id)?.filter((role) => role.kind !== 'substitute')} className="ml-2" />
+                      </td>
                       <td>
                         <StatusChip status={row.status} substituteArrived={Boolean(row.substituteArrivedAt)} />
                       </td>
@@ -161,6 +166,7 @@ export default async function AttendancePage({
                               substituteName: row.substituteName,
                               substituteArrived: Boolean(row.substituteArrivedAt),
                               note: row.note,
+                              duties: row.roles,
                             }}
                           />
                         </div>

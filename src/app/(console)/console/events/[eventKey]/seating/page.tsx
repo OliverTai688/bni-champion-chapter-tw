@@ -6,6 +6,7 @@ import { SeatAssigner, type AssignPerson } from '@/components/tbx/plan/seat-assi
 import { Card, Empty } from '@/components/tbx/ui';
 import { deriveSeats } from '@/lib/tbx/plan';
 import { getEventByKey } from '@/server/tbx/events';
+import { getMeetingRoles } from '@/server/tbx/meeting-roles';
 import { getAttendance } from '@/server/tbx/participation';
 import { getEventSeatPlan, listLayoutOptions } from '@/server/tbx/seat-plan';
 import { createSeatPlanAction, discardSeatPlanAction } from './actions';
@@ -93,6 +94,7 @@ export default async function EventSeatingPage({
   }
 
   const { rows } = await getAttendance(event.id);
+  const roles = await getMeetingRoles(event.id);
   const people: AssignPerson[] = rows.map((row) => ({
     id: row.id,
     displayName: row.displayName,
@@ -100,6 +102,7 @@ export default async function EventSeatingPage({
     status: row.status,
     substituteName: row.status === 'substitute' ? row.substituteName : null,
     substituteArrived: row.status === 'substitute' && Boolean(row.substituteArrivedAt),
+    roles: roles.get(row.id),
   }));
 
   // Drop pairs that point at a seat or a person that no longer exists.

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { findGridSeat, GridView } from '@/components/tbx/grid/grid-view';
-import { PlanView } from '@/components/tbx/plan/plan-view';
+import { PlanWithRoles } from '@/components/tbx/plan/plan-with-roles';
 import { Stat } from '@/components/tbx/ui';
 import { eventTypeLabel, formatEventDate } from '@/lib/tbx/labels';
 import { prisma } from '@/server/db/prisma';
@@ -98,7 +98,7 @@ export default async function PublicEventPage({
                   {found ? `${found.substituteName ?? found.name} 的座位：${found.label}` : `座位表上找不到「${query}」。請確認姓名，或詢問報到台。`}
                 </p>
               ) : null}
-              <PlanView data={plan} highlightParticipationId={found?.participationId ?? null} showNames />
+              <PlanWithRoles data={plan} highlightParticipationId={found?.participationId ?? null} showNames />
             </>
           ) : grid ? (
             <>

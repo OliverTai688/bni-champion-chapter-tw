@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { STATUS_LABEL, type ParticipationStatusKey } from '@/lib/tbx/labels';
+import { ROLE_STYLE, type MeetingRole } from '@/lib/tbx/roles';
 import { cn } from '@/lib/utils';
 
 export function PageHeader({
@@ -48,6 +49,25 @@ export function Card({
       ) : null}
       <div className={cn(bodyClassName ?? 'tb-card-body')}>{children}</div>
     </section>
+  );
+}
+
+/** Meeting roles of one person as small labels. Renders nothing when the person has no role. */
+export function RoleChips({ roles, className }: { roles?: readonly MeetingRole[]; className?: string }) {
+  if (!roles?.length) return null;
+  return (
+    <span className={cn('inline-flex flex-wrap gap-1 align-middle', className)}>
+      {roles.map((role) => (
+        <span
+          key={`${role.kind}:${role.label}`}
+          className="whitespace-nowrap rounded px-1.5 py-px text-[11px] font-bold"
+          style={ROLE_STYLE[role.kind]}
+          title={role.detail}
+        >
+          {role.label}
+        </span>
+      ))}
+    </span>
   );
 }
 

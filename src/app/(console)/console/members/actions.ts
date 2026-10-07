@@ -11,6 +11,7 @@ import {
   setMemberCategory,
   updateMember,
 } from '@/server/tbx/member-admin';
+import { setMemberMentor } from '@/server/tbx/meeting-roles';
 import { unbindLineAccount } from '@/server/tbx/member-identity';
 import { LOGIN_LINK_TTL_DAYS, issueMemberLoginLink } from '@/server/tbx/member-login';
 import { syncMemberDirectory } from '@/server/tbx/members';
@@ -112,6 +113,31 @@ export async function setMemberCategoryAction(_prev: ActionState, formData: Form
     });
     revalidateMembers(member.id);
     return ok(category === 'member' ? `已把「${member.displayName}」設為會員` : `已把「${member.displayName}」標記為非會員`);
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/** Sets or clears a member's mentor; a member with a mentor is shown as 新會員 on seat plans. */
+export async function setMemberMentorAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const viewer = await requireLeader();
+    const memberId = text(formData, 'memberId');
+    if (!isObjectId(memberId)) throw new Error('會員編號不正確，請重新整理名冊後再試。');
+    const mentorValue = text(formData, 'mentorId');
+    if (mentorValue && !isObjectId(mentorValue)) throw new Error('導師編號不正確，請重新選擇。');
+    const result = await setMemberMentor(memberId, mentorValue || null);
+    await logOperation({
+      actorRole: 'admin',
+      actorName: viewer.leaderName,
+      action: result.mentorName ? 'member_mentor_set' : 'member_mentor_cleared',
+      targetType: 'Member',
+      targetId: memberId,
+      metadata: { displayName: result.displayName, mentorName: result.mentorName },
+    });
+    revalidateMembers(memberId);
+    revalidatePath('/console/events', 'layout');
+    return ok(result.mentorName ? `已把 ${result.mentorName} 設為 ${result.displayName} 的導師` : `已取消 ${result.displayName} 的新會員標示`);
   } catch (error) {
     return fail(error);
   }

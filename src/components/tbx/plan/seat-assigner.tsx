@@ -4,11 +4,13 @@ import { useMemo, useRef, useState } from 'react';
 import { Minus, Plus, Search, Wand2 } from 'lucide-react';
 import { saveSeatAssignmentsAction } from '@/app/(console)/console/events/[eventKey]/seating/actions';
 import { ActionForm, SubmitButton } from '@/components/tbx/client';
+import { RoleLegend } from '@/components/tbx/plan/plan-with-roles';
 import { PlanCanvas, type CanvasSeat, type SeatTone } from '@/components/tbx/plan/plan-view';
 import { TwoStepButton } from '@/components/tbx/plan/two-step';
 import { StatusChip } from '@/components/tbx/ui';
 import { STATUS_LABEL, type ParticipationStatusKey } from '@/lib/tbx/labels';
 import { deriveSeats, type PlanObject } from '@/lib/tbx/plan';
+import { roleSummary, type MeetingRole } from '@/lib/tbx/roles';
 import { cn } from '@/lib/utils';
 
 export interface AssignPerson {
@@ -18,6 +20,8 @@ export interface AssignPerson {
   status: ParticipationStatusKey;
   substituteName: string | null;
   substituteArrived: boolean;
+  /** Meeting roles (主席, 值日, 導師…); they move with the person when the seat changes. */
+  roles?: MeetingRole[];
 }
 
 type Assignments = Record<string, string>;
@@ -73,6 +77,7 @@ export function SeatAssigner({
   const [query, setQuery] = useState('');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [showNames, setShowNames] = useState(true);
+  const [showRoles, setShowRoles] = useState(true);
   const [zoom, setZoom] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const submittedRef = useRef(savedJson);
@@ -206,8 +211,9 @@ export function SeatAssigner({
       y: seat.y,
       tone: toneOf(person),
       name: person.status === 'substitute' && person.substituteName ? person.substituteName : person.displayName,
-      title: `${seat.label} ${person.displayName}（${stateText(person)}）`,
+      title: `${seat.label} ${person.displayName}（${stateText(person)}${person.roles?.length ? `，${roleSummary(person.roles)}` : ''}）`,
       ring,
+      roles: person.roles,
     };
   });
 
@@ -385,6 +391,15 @@ export function SeatAssigner({
               />
               在座位上顯示姓名
             </label>
+            <label className="inline-flex items-center gap-2 text-xs font-semibold text-tb-muted" htmlFor="seat-assign-roles">
+              <input
+                id="seat-assign-roles"
+                type="checkbox"
+                checked={showRoles}
+                onChange={(event) => setShowRoles(event.target.checked)}
+              />
+              顯示會議角色
+            </label>
             <span className="inline-flex items-center gap-1">
               <button
                 type="button"
@@ -419,12 +434,15 @@ export function SeatAssigner({
             objects={objects}
             seats={canvasSeats}
             names={showNames ? 'always' : 'none'}
+            showRoles={showRoles}
             zoom={zoom === 0 ? 1 : zoom}
             fit={zoom === 0}
             onSeatClick={onSeatClick}
             className="max-h-[78vh] rounded-xl border border-tb-line"
             ariaLabel="座位平面圖，點座位安排入座"
           />
+
+          {showRoles ? <RoleLegend seats={canvasSeats} /> : null}
 
           <div className="flex flex-wrap gap-2" aria-label="顏色說明">
             <span className="tb-chip tb-chip-present">已簽到</span>

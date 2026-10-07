@@ -139,6 +139,8 @@ model Member {
   // 'member' = chapter member. Null = name created from a seat map (guest, proxy, unknown).
   category    String?
   joinedAt    DateTime?
+  // Set while a new member is being mentored. Shown as 新會員 / 導師 on seat plans.
+  mentorId    String?  @db.ObjectId
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -402,6 +404,8 @@ model Participation {
   guestCompany     String?
   hostMemberId     String?             @db.ObjectId
   invitedByMemberId String?            @db.ObjectId
+  // Duties for this one event, e.g. ["duty", "sound"]. Keys live in src/lib/tbx/roles.ts.
+  roles            String[]
   note             String?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt

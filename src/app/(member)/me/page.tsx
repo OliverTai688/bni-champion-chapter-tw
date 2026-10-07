@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { GridView } from '@/components/tbx/grid/grid-view';
 import { PlanView } from '@/components/tbx/plan/plan-view';
-import { Empty, StatusChip } from '@/components/tbx/ui';
+import { Empty, RoleChips, StatusChip } from '@/components/tbx/ui';
 import { formatEventDate } from '@/lib/tbx/labels';
 import { prisma } from '@/server/db/prisma';
 import { getFocusEvent, isEventPublic, isEventToday } from '@/server/tbx/events';
+import { getMeetingRoles } from '@/server/tbx/meeting-roles';
 import { getAttendance } from '@/server/tbx/participation';
 import { getGridSeatView } from '@/server/tbx/grid-seat-map';
 import { getSeatPlanView } from '@/server/tbx/seat-plan';
@@ -33,6 +34,7 @@ export default async function MemberTodayPage() {
     prisma.livePoll.findFirst({ where: { sessionId: event.id, status: 'open' }, select: { id: true } }),
   ]);
   const mine = rows.find((row) => row.memberId === me.id) ?? null;
+  const myRoles = mine ? (await getMeetingRoles(event.id)).get(mine.id)?.filter((role) => role.kind !== 'substitute') : undefined;
   const today = isEventToday(event);
   const published = isEventPublic(event.publicStatus);
 
@@ -70,6 +72,13 @@ export default async function MemberTodayPage() {
               {mine.status === 'substitute' ? <span className="font-semibold text-tb-sub">{mine.substituteName}</span> : null}
               <StatusChip status={mine.status} substituteArrived={Boolean(mine.substituteArrivedAt)} />
             </span>
+          </div>
+        ) : null}
+
+        {myRoles?.length ? (
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-tb-muted">本場角色</span>
+            <RoleChips roles={myRoles} className="justify-end" />
           </div>
         ) : null}
 

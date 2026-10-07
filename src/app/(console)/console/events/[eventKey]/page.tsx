@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AutoRefresh } from '@/components/tbx/client';
 import { GridView } from '@/components/tbx/grid/grid-view';
-import { PlanView } from '@/components/tbx/plan/plan-view';
+import { PlanWithRoles } from '@/components/tbx/plan/plan-with-roles';
 import { Card, Empty, Stat, StatusChip } from '@/components/tbx/ui';
 import { formatTime } from '@/lib/tbx/labels';
 import { prisma } from '@/server/db/prisma';
@@ -118,7 +118,7 @@ export default async function EventConsolePage({ params }: { params: Promise<{ e
           }
         >
           {plan ? (
-            <PlanView data={plan} showNames />
+            <PlanWithRoles data={plan} showNames defaultShowRoles />
           ) : grid ? (
             <GridView data={grid} />
           ) : (

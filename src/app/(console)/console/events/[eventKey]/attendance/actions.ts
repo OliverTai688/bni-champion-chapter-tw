@@ -6,6 +6,7 @@ import { prisma } from '@/server/db/prisma';
 import { fail, isObjectId, ok, optionalText, text, type ActionState } from '@/server/tbx/action';
 import { getEventByKey } from '@/server/tbx/events';
 import { logOperation } from '@/server/tbx/log';
+import { setEventDuties } from '@/server/tbx/meeting-roles';
 import {
   addGuest,
   checkIn,
@@ -31,6 +32,7 @@ async function loadRow(formData: FormData) {
 
 function refresh(weekId: string) {
   revalidatePath(`/console/events/${weekId}`, 'layout');
+  revalidatePath(`/e/${weekId}`, 'layout');
 }
 
 function memberIdOrNull(formData: FormData, key: string) {
@@ -81,6 +83,7 @@ export async function updateParticipationAction(_prev: ActionState, formData: Fo
       substituteArrived: formData.get('substituteArrived') === 'on',
       note: optionalText(formData, 'note'),
     });
+    const duties = row.kind === 'member' ? await setEventDuties(row.id, formData.getAll('duties')) : [];
     await logOperation({
       sessionId: event.id,
       actorRole: 'admin',
@@ -88,7 +91,7 @@ export async function updateParticipationAction(_prev: ActionState, formData: Fo
       action: 'attendance_updated',
       targetType: 'Participation',
       targetId: row.id,
-      metadata: { displayName: row.displayName, status },
+      metadata: { displayName: row.displayName, status, duties },
     });
     refresh(event.weekId);
     return ok('已更新出席');

@@ -4,6 +4,8 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '@/server/db/prisma';
 import type { ParticipationStatusKey } from '@/lib/tbx/labels';
 import { deriveSeats, readPlanObjects, type PlanObject } from '@/lib/tbx/plan';
+import type { MeetingRole } from '@/lib/tbx/roles';
+import { getMeetingRoles } from '@/server/tbx/meeting-roles';
 
 export interface SeatPlanViewSeat {
   seatId: string;
@@ -16,6 +18,8 @@ export interface SeatPlanViewSeat {
   status: ParticipationStatusKey | null;
   substituteName: string | null;
   substituteArrived: boolean;
+  /** Meeting roles of whoever sits here (主席, 值日, 導師…). Empty for an empty seat. */
+  roles: MeetingRole[];
 }
 
 export interface SeatPlanViewData {
@@ -95,6 +99,7 @@ export async function getSeatPlanView(sessionId: string): Promise<SeatPlanViewDa
       })
     : [];
   const byId = new Map(rows.map((row) => [row.id, row]));
+  const rolesById = seated.length ? await getMeetingRoles(sessionId) : new Map<string, MeetingRole[]>();
 
   const seats: SeatPlanViewSeat[] = deriveSeats(plan.objects).map((seat) => {
     const participationId = plan.assignments[seat.seatId];
@@ -110,6 +115,7 @@ export async function getSeatPlanView(sessionId: string): Promise<SeatPlanViewDa
       status: row?.status ?? null,
       substituteName: row?.status === 'substitute' ? row.substituteName : null,
       substituteArrived: row?.status === 'substitute' && Boolean(row.substituteArrivedAt),
+      roles: row ? rolesById.get(row.id) ?? [] : [],
     };
   });
 

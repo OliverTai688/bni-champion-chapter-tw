@@ -3,6 +3,7 @@
 import type { KeyboardEvent, ReactNode } from 'react';
 import { STATUS_LABEL } from '@/lib/tbx/labels';
 import { SEAT_RADIUS, bodyHalfSize, deriveSeats, type PlanObject } from '@/lib/tbx/plan';
+import { ROLE_STYLE, roleSummary, type MeetingRole } from '@/lib/tbx/roles';
 import { cn } from '@/lib/utils';
 import type { SeatPlanViewData, SeatPlanViewSeat } from '@/server/tbx/seat-plan';
 
@@ -38,7 +39,12 @@ export interface CanvasSeat {
   title: string;
   /** Gold ring: "this is the seat you are looking for" or the current selection. */
   ring?: boolean;
+  /** Meeting roles of the person on the seat; drawn as small tags when the canvas has `showRoles`. */
+  roles?: MeetingRole[];
 }
+
+/** Most role tags drawn on one seat; a person with more gets a "+" tag. */
+const MAX_ROLE_TAGS = 3;
 
 const TONE_STYLE: Record<SeatTone, { color: string; soft: string; solid: boolean; dashed: boolean }> = {
   empty: { color: 'var(--tb-wall)', soft: 'transparent', solid: false, dashed: false },
@@ -249,8 +255,8 @@ export function PlanObjectShape({
   if (showLabel && caption) {
     const units = Math.max(textUnits(caption), 1);
     if (object.type === 'row') {
-      // Rows have no body: the label sits just before the first chair.
-      const offset = hw + labelFont * 0.75;
+      // Rows have no body: the label sits just before the first chair, clear of the role tags on it.
+      const offset = hw + labelFont;
       const lx = object.x - offset * Math.cos(rad);
       const ly = object.y - offset * Math.sin(rad);
       label = (
@@ -321,6 +327,8 @@ export interface PlanCanvasProps {
   zoom?: number;
   /** Always fit the container width, even when that makes inline names small (the viewer has a zoom control). */
   fit?: boolean;
+  /** Draw each person's meeting roles (主, 值, 音, 新, 導…) as tags on the seat. */
+  showRoles?: boolean;
   className?: string;
   ariaLabel?: string;
   onSeatClick?: (seatId: string) => void;
@@ -335,6 +343,7 @@ export function PlanCanvas({
   compact = false,
   zoom = 1,
   fit = false,
+  showRoles = false,
   className,
   ariaLabel,
   onSeatClick,
@@ -354,6 +363,40 @@ export function PlanCanvas({
   const pillW = Math.min(pitch * 0.94, 1.3);
   const pillH = nameFont * 1.75;
   const nameBudget = (pillW * 0.9) / nameFont;
+
+  // Role tags sit on the top-left corner of the name pill, or just above a dot.
+  function roleTags(seat: CanvasSeat, left: number, top: number, tagH: number) {
+    if (!showRoles || compact || !seat.roles?.length) return null;
+    const tagW = tagH * 1.05;
+    const gap = tagH * 0.12;
+    const shown = seat.roles.slice(0, MAX_ROLE_TAGS);
+    const more = seat.roles.length > MAX_ROLE_TAGS;
+    return (
+      <g aria-hidden="true">
+        {shown.map((role, index) => {
+          const style = ROLE_STYLE[role.kind];
+          const x = left + index * (tagW + gap);
+          const overflow = more && index === MAX_ROLE_TAGS - 1;
+          return (
+            <g key={`${role.kind}:${role.label}`}>
+              <rect x={x} y={top} width={tagW} height={tagH} rx={tagH * 0.28} fill={overflow ? 'var(--tb-muted)' : style.background} />
+              <text
+                x={x + tagW / 2}
+                y={top + tagH / 2}
+                fontSize={tagH * 0.74}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill={overflow ? 'var(--tb-bg)' : style.color}
+                fontWeight={800}
+              >
+                {overflow ? '+' : role.short}
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
+  }
 
   const seatNodes = seats.map((seat) => {
     const tone = TONE_STYLE[seat.tone];
@@ -402,6 +445,7 @@ export function PlanCanvas({
               vectorEffect="non-scaling-stroke"
             />
           ) : null}
+          {roleTags(seat, -pillW / 2, -pillH / 2 - pillH * 0.46, pillH * 0.62)}
         </>
       );
     } else {
@@ -419,6 +463,7 @@ export function PlanCanvas({
           {seat.ring ? (
             <circle r={dotR + 0.1} fill="none" stroke="var(--tb-gold)" strokeWidth={3} vectorEffect="non-scaling-stroke" />
           ) : null}
+          {roleTags(seat, -dotR, -dotR - dotR * 0.7, dotR * 0.9)}
         </>
       );
     }
@@ -492,7 +537,8 @@ function seatTitle(seat: SeatPlanViewSeat, showNames: boolean) {
   } else {
     state = STATUS_LABEL[seat.status];
   }
-  return showNames && seat.name ? `${seat.label} ${seat.name}（${state}）` : `${seat.label}（${state}）`;
+  const roles = seat.roles.length ? `，${roleSummary(seat.roles)}` : '';
+  return showNames && seat.name ? `${seat.label} ${seat.name}（${state}${roles}）` : `${seat.label}（${state}${roles}）`;
 }
 
 /**
@@ -503,16 +549,19 @@ function seatTitle(seat: SeatPlanViewSeat, showNames: boolean) {
  *   stay readable (a substitute's name replaces the member's). On dense plans the seats fall back to coloured
  *   dots and the name is in the seat's tooltip.
  * - `highlightParticipationId`: that person's seat gets a gold ring.
+ * - `showRoles`: meeting roles are drawn as one-character tags on the seats (see `RoleLegend` for the key).
  */
 export function PlanView({
   data,
   highlightParticipationId,
   showNames = false,
+  showRoles = false,
   className,
 }: {
   data: SeatPlanViewData;
   highlightParticipationId?: string | null;
   showNames?: boolean;
+  showRoles?: boolean;
   className?: string;
 }) {
   const seats: CanvasSeat[] = data.seats.map((seat) => ({
@@ -524,6 +573,7 @@ export function PlanView({
     name: showNames ? (seat.status === 'substitute' && seat.substituteName ? seat.substituteName : seat.name) : null,
     title: seatTitle(seat, showNames),
     ring: Boolean(highlightParticipationId) && seat.participationId === highlightParticipationId,
+    roles: seat.roles,
   }));
 
   return (
@@ -533,6 +583,7 @@ export function PlanView({
       objects={data.objects}
       seats={seats}
       names={showNames ? 'auto' : 'none'}
+      showRoles={showRoles}
       className={cn('rounded-xl', className)}
       ariaLabel={data.venueName ? `${data.venueName} 座位平面圖` : '座位平面圖'}
     />
