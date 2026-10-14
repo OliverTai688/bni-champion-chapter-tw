@@ -50,7 +50,12 @@ Task IDs: 1015-LAYOUT, ROLES-PHOTO
 - `git diff --check`: passed
 - `scripts/seed-current-layout.mjs --dry-run`: passed (45 seats, 45 assignments)
 
-## 6. Pending (needs user approval)
+## 6. Deployed and Production Writes (user approved 2026-10-14)
 
-- Commit and push to `main` (deploys the 攝影 badge).
-- Production: `seed-current-layout.mjs --write` for 10/15, `grid-to-floor-plan.mjs --week=2026-10-15 --write`, then publish.
+- Pushed `a91b5a5` to `main`.
+- `seed-current-layout.mjs --write`: 10/15 seed v1, 45 seats, 45 assignments. Session title now "115/10/15 座位表".
+- Guest participations: the 6 guests added to the 10/15 attendance list with the same fields as `ensureParticipations()` (key `g:…`, note 賓N, host linked). Without this the floor plan conversion skipped them.
+- `grid-to-floor-plan.mjs --week=2026-10-15 --write`: 45 seated, 0 unmatched; duties 吳振綱 值日, 林子晏 音控, 韓政諺 攝影.
+- Publish: slug `2026-10-15-e90ab4`, `publicStatus` published, logged as `public_event_publish` (same fields as `updateEventPublication()`).
+- Production check (HTTP fetch): `/e/2026-10-15` and `/e/2026-10-15-e90ab4` return 200 and contain the guests, 叢晧日, both proxies and 攝影; `/` lists 115/10/15.
+- Not checked: browser rendering at 375 px, `/console` pages (need a leader login).
