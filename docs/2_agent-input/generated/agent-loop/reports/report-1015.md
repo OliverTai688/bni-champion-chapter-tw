@@ -59,3 +59,12 @@ Task IDs: 1015-LAYOUT, ROLES-PHOTO
 - Publish: slug `2026-10-15-e90ab4`, `publicStatus` published, logged as `public_event_publish` (same fields as `updateEventPublication()`).
 - Production check (HTTP fetch): `/e/2026-10-15` and `/e/2026-10-15-e90ab4` return 200 and contain the guests, 叢晧日, both proxies and 攝影; `/` lists 115/10/15.
 - Not checked: browser rendering at 375 px, `/console` pages (need a leader login).
+
+## 7. Update (2026-10-15): 葉心琳 left the chapter (user approved)
+
+- Code `4036dfb`: removed from `layout-1015.ts` (row 9: 王柏詠 / 郭子郁 代理 / 黎士銓 代理 / empty) and from `CHAPTER_MEMBER_DIRECTORY`; added to `FORMER_CHAPTER_MEMBER_NAMES`.
+- Production: `Member(葉心琳).isActive = false` (same as 劉庭羽), logged `member_deactivated`; her 10/15 participation (expected, no activity) deleted, logged `participation_removed`; her option in the open poll 長冠軍之星 set inactive (0 votes), logged `live_poll_option_hidden`.
+- 10/15 re-seeded: seed v2 (45 seats, 44 assignments) is the only active seat map; floor plan replaced: 44 seated, 0 unmatched, duties unchanged.
+- Read-back: 38 active members, 10/15 attendance 38 members + 6 guests, proxies 郭子郁 and 黎士銓, still published at `2026-10-15-e90ab4`.
+- `/e/2026-10-15` (HTTP fetch): 200, no 葉心琳, guests and proxies present.
+- Note: past attendance reports use the current directory, so 葉心琳 no longer appears in reports for earlier dates (same side effect as 劉庭羽).
