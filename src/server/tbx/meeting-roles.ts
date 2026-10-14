@@ -137,7 +137,7 @@ export async function getMeetingRoles(sessionId: string): Promise<Map<string, Me
 export async function setEventDuties(participationId: string, keys: readonly unknown[]) {
   const row = await prisma.participation.findUnique({ where: { id: participationId }, select: { id: true, kind: true } });
   if (!row) throw new Error('找不到這筆出席紀錄。');
-  if (row.kind !== 'member') throw new Error('只有會員可以擔任值日或音控。');
+  if (row.kind !== 'member') throw new Error('只有會員可以擔任值日、音控或攝影。');
   const roles = cleanDutyKeys(keys);
   await prisma.participation.update({ where: { id: row.id }, data: { roles } });
   return roles;

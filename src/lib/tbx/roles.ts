@@ -1,7 +1,7 @@
 // Meeting roles shown on seat plans and attendance lists (safe on client and server).
 // A person can hold several roles at once, e.g. 值日 and 音控.
 
-export type MeetingRoleKind = 'leader' | 'duty' | 'sound' | 'host' | 'guest' | 'substitute' | 'newcomer' | 'mentor';
+export type MeetingRoleKind = 'leader' | 'duty' | 'sound' | 'photo' | 'host' | 'guest' | 'substitute' | 'newcomer' | 'mentor';
 
 export interface MeetingRole {
   kind: MeetingRoleKind;
@@ -17,6 +17,7 @@ export interface MeetingRole {
 export const EVENT_DUTIES = [
   { key: 'duty', label: '值日', short: '值' },
   { key: 'sound', label: '音控', short: '音' },
+  { key: 'photo', label: '攝影', short: '攝' },
 ] as const;
 
 export type EventDutyKey = (typeof EVENT_DUTIES)[number]['key'];
@@ -57,6 +58,7 @@ export const ROLE_STYLE: Record<MeetingRoleKind, { background: string; color: st
   leader: { background: '#d9a845', color: '#1a1405' },
   duty: { background: '#4db6c4', color: '#06181b' },
   sound: { background: '#4db6c4', color: '#06181b' },
+  photo: { background: '#4db6c4', color: '#06181b' },
   host: { background: '#6fa9e6', color: '#07172a' },
   guest: { background: '#6fa9e6', color: '#07172a' },
   substitute: { background: '#a594ee', color: '#120c2e' },
@@ -89,7 +91,7 @@ export function buildRoleLegend(seats: ReadonlyArray<{ name: string | null; role
       entries.set(key, entry);
     }
   }
-  const order: MeetingRoleKind[] = ['leader', 'duty', 'sound', 'newcomer', 'mentor', 'guest', 'host', 'substitute'];
+  const order: MeetingRoleKind[] = ['leader', 'duty', 'sound', 'photo', 'newcomer', 'mentor', 'guest', 'host', 'substitute'];
   // Within the head team: 主席 first, then the usual order of offices.
   const offices = Object.keys(LEADER_SHORT);
   const rank = (entry: RoleLegendEntry) => {

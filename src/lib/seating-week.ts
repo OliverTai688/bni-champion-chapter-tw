@@ -1,19 +1,19 @@
 import type { MeetingWeek, SeatingLayout, SeatingWorkspaceState } from '@/types/seating';
 import { DEFAULT_INDUSTRY_CHAINS } from '@/lib/industry-chains';
-import { LAYOUT_1008, ROSTER_1008 } from '@/lib/layout-1008';
+import { LAYOUT_1015, ROSTER_1015 } from '@/lib/layout-1015';
 
 export const CURRENT_MEETING_WEEK: MeetingWeek = {
-  id: '2026-10-08',
-  date: '2026-10-08',
-  title: '115/10/08 座位表',
+  id: '2026-10-15',
+  date: '2026-10-15',
+  title: '115/10/15 座位表',
   chapterName: 'BNI 長冠軍分會',
   meetingLabel: '每週例會排座',
   source: 'seed',
 };
 
-export const CURRENT_SEATING_LAYOUT: SeatingLayout = LAYOUT_1008;
-export const CURRENT_SEATING_HEROES = ROSTER_1008.heroes;
-export const CURRENT_SEATING_MEMBER_ROSTER = ROSTER_1008.members;
+export const CURRENT_SEATING_LAYOUT: SeatingLayout = LAYOUT_1015;
+export const CURRENT_SEATING_HEROES = ROSTER_1015.heroes;
+export const CURRENT_SEATING_MEMBER_ROSTER = ROSTER_1015.members;
 
 export function createWorkspaceState(
   week: MeetingWeek,

@@ -88,6 +88,7 @@ export async function getGridSeatView(weekId: string, sessionId: string): Promis
     else if (tag === 'proxy') badge = '代理';
     else if (tag === 'sound') badge = meta.isDuty === true ? '值日・音控' : '音控';
     else if (tag === 'duty') badge = '值日生';
+    if (meta.isPhoto === true && (tag === 'member' || tag === 'sound' || tag === 'duty')) badge = badge ? `${badge}・攝影` : '攝影';
 
     const status = participation?.status ?? null;
     return {

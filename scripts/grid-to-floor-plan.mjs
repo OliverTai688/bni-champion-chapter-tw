@@ -218,6 +218,7 @@ async function main() {
       const roles = [
         ...(seat.kind === 'duty' || meta.isDuty === true ? ['duty'] : []),
         ...(seat.kind === 'sound' || meta.isSound === true ? ['sound'] : []),
+        ...(meta.isPhoto === true ? ['photo'] : []),
       ];
       if (roles.length > 0 && row.kind === 'member') duties.push({ participationId: row.id, name, roles });
     }

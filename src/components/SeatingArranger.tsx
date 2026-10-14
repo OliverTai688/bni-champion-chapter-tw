@@ -50,7 +50,7 @@ import {
   buildPersonChainIndex,
 } from '@/lib/industry-chains';
 import { localSeatingWorkspaceRepository } from '@/lib/seating-storage';
-import { buildSeatingCsv, downloadTextFile } from '@/lib/seating-export';
+import { buildSeatingCsv, downloadTextFile, seatDutyLabel } from '@/lib/seating-export';
 import { getSeatCoordinate, validateSeatingWorkspace } from '@/lib/seating-validation';
 import { CHAPTER_MEMBER_DIRECTORY } from '@/lib/chapter-members';
 
@@ -138,13 +138,13 @@ function SortableSeat({
         </div>
       )}
 
-      {/* Top-left tag: 音控 / 值日 */}
-      {(isSound || isDuty) && (
+      {/* Top-left tag: 值日 / 音控 / 攝影 */}
+      {(isSound || isDuty || seat.isPhoto) && (
         <div className="absolute top-0 left-0 transform -translate-x-1/4 -translate-y-1/4">
           <span className={`px-2 py-0.5 text-[9px] font-black text-white rounded-full shadow-lg uppercase tracking-tighter ${
-            isSound ? 'bg-sky-500' : 'bg-emerald-500'
+            isSound ? 'bg-sky-500' : isDuty ? 'bg-emerald-500' : 'bg-rose-500'
           }`}>
-            {isSound && isDuty ? '值日・音控' : isSound ? '音控' : '值日'}
+            {seatDutyLabel(seat)}
           </span>
         </div>
       )}

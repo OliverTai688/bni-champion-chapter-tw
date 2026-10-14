@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { SeatData, SeatingWorkspaceState } from '@/types/seating';
 import { buildPersonChainIndex } from '@/lib/industry-chains';
+import { seatDutyLabel } from '@/lib/seating-export';
 import { CHAPTER_MEMBER_DIRECTORY } from '@/lib/chapter-members';
 import type { AdminSeatingWorkspaceDTO } from '@/application/seating/dto';
 
@@ -95,16 +96,16 @@ function SeatCard({ seat, chainIds }: { seat: SeatData | null; chainIds?: string
           代理
         </span>
       )}
-      {/* Top-left badge: 音控 / 值日 */}
-      {(isSound || isDuty) && (
+      {/* Top-left badge: 值日 / 音控 / 攝影 */}
+      {(isSound || isDuty || seat.isPhoto) && (
         <span style={{
           position: 'absolute', top: -10, left: -10,
-          background: isSound ? '#0ea5e9' : '#22c55e', color: '#fff',
+          background: isSound ? '#0ea5e9' : isDuty ? '#22c55e' : '#f43f5e', color: '#fff',
           fontSize: 11, fontWeight: 900,
           padding: '2px 8px', borderRadius: 99,
           lineHeight: 1.5,
         }}>
-          {isSound && isDuty ? '值日・音控' : isSound ? '音控' : '值日'}
+          {seatDutyLabel(seat)}
         </span>
       )}
 

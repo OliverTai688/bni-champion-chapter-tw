@@ -16,6 +16,7 @@ export interface SeatData {
   hostFor?: string;        // 該執事服務的賓號 e.g. "賓1"
   isSound?: boolean;       // 音控
   isDuty?: boolean;        // 值日生
+  isPhoto?: boolean;       // 攝影
   role?: string;           // 行業 / 職稱
   attendanceStatus?: string; // 報到狀態
 }

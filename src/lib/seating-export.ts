@@ -8,13 +8,16 @@ function csvCell(value: string | number | undefined) {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
+/** 值日 / 音控 / 攝影 badge text; one person can hold several, e.g. 值日・音控. */
+export function seatDutyLabel(seat: Pick<SeatData, 'isDuty' | 'isSound' | 'isPhoto'>) {
+  return [seat.isDuty && '值日', seat.isSound && '音控', seat.isPhoto && '攝影'].filter(Boolean).join('・');
+}
+
 function seatKind(seat: SeatData | null) {
   if (!seat) return '空位';
   if (seat.isGuest) return '來賓';
   if (seat.isHost) return '執事';
-  if (seat.isSound && seat.isDuty) return '值日生・音控';
-  if (seat.isSound) return '音控';
-  if (seat.isDuty) return '值日生';
+  if (seat.isSound || seat.isDuty || seat.isPhoto) return seatDutyLabel(seat).replace('值日', '值日生');
   if (seat.role === '代理') return '代理';
   return '會員';
 }
