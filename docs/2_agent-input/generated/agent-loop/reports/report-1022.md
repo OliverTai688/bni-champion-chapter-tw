@@ -40,7 +40,12 @@ Task IDs: 1022-LAYOUT
 - `git diff --check`: passed
 - `scripts/seed-current-layout.mjs --dry-run`: passed (41 seats, 39 assignments)
 
-## 5. Not Done (needs approval)
+## 5. Deployed and Production Writes (user approved 2026-10-21)
 
-- Commit and push.
-- Production writes, same steps as 10/15: `seed-current-layout.mjs --write`, add the guest participation, `grid-to-floor-plan.mjs --week=2026-10-22 --write`, publish.
+- Pushed `e237e5e` to `main`.
+- `seed-current-layout.mjs --write`: 10/22 seed v1, 41 seats, 39 assignments. Session title now "115/10/22 座位表".
+- Guest participation: 劉彥余 added to the 10/22 attendance list with the same fields as `ensureParticipations()` (key `g:…`, note 賓1, host 林家均).
+- Floor plan: 戴宇星 had created an empty 10/22 plan from the venue template at 15:11 UTC (no assignments, never edited). `grid-to-floor-plan.mjs --week=2026-10-22 --write --replace` replaced it with the same venue: 39 seated, 0 unmatched; duties 王致崴 值日, 戴宇星 音控, 林道元 攝影. Mina 陳宜均 maps to 四排3.
+- Publish: slug `2026-10-22-d2079e`, `publicStatus` published, logged as `public_event_publish` (same fields as `updateEventPublication()`).
+- Production check (HTTP fetch): `/e/2026-10-22` and `/e/2026-10-22-d2079e` return 200 and contain 劉彥余, 黃子宜, 陳宜均, 林子晏, 代理 and 攝影; `/` lists 115/10/22.
+- Not checked: browser rendering at 375 px, `/console` pages (need a leader login).
