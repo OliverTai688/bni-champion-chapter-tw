@@ -27,6 +27,7 @@ import {
   saveRuleVersion,
   type RowDecision,
 } from '@/server/tbx/scorecard';
+import { parsePalmsUpload } from '@/server/tbx/palms-upload';
 import { requireLeader } from '@/server/tbx/viewer';
 
 const MAX_FILE_BYTES = 900 * 1024;
@@ -34,19 +35,6 @@ const MAX_FILE_BYTES = 900 * 1024;
 function revalidateScorecard() {
   revalidatePath('/console/scorecard', 'layout');
   revalidatePath('/me/scorecard');
-}
-
-function decodeUpload(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  // An old binary .xls starts with the OLE signature D0 CF 11 E0.
-  if (bytes.length >= 4 && bytes[0] === 0xd0 && bytes[1] === 0xcf && bytes[2] === 0x11 && bytes[3] === 0xe0) {
-    throw new Error(
-      '這個檔案是用 Excel 另存過的二進位格式，系統讀不到。請到 BNI Connect 重新匯出 PALMS 摘要報告，直接上傳下載到的檔案。',
-    );
-  }
-  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(buffer);
-  if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(buffer);
-  return new TextDecoder('utf-8').decode(buffer);
 }
 
 function requirePeriodId(formData: FormData) {
@@ -62,7 +50,7 @@ export async function importPalmsAction(_prev: ActionState, formData: FormData):
     const viewer = await requireLeader();
     const file = formData.get('file');
     if (!file || typeof file === 'string' || file.size === 0) {
-      throw new Error('請先選擇要上傳的 PALMS 檔案（從 BNI Connect 匯出的 .xls）。');
+      throw new Error('請先選擇要上傳的 PALMS 檔案（從 BNI Connect 匯出的 .xls，或另存的 .xlsx）。');
     }
     if (file.size > MAX_FILE_BYTES) {
       throw new Error('檔案超過 900 KB。PALMS 摘要報告通常不到 100 KB，請確認選到的是摘要報告。');
@@ -70,7 +58,7 @@ export async function importPalmsAction(_prev: ActionState, formData: FormData):
 
     const result = await importPalmsFile({
       fileName: file.name || 'palms.xls',
-      content: decodeUpload(await file.arrayBuffer()),
+      report: await parsePalmsUpload(await file.arrayBuffer()),
       importedBy: viewer.leaderName,
     });
     periodId = result.periodId;

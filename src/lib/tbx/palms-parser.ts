@@ -1,5 +1,6 @@
 // Parser for the BNI Connect "PALMS 摘要報告" export.
-// The file is named .xls but holds SpreadsheetML 2003 XML. Pure module: no I/O, no dependencies.
+// The file is named .xls but holds SpreadsheetML 2003 XML. A copy saved as .xlsx is read by
+// `src/server/tbx/palms-xlsx.ts` into the same sheet shape. Pure module: no I/O, no dependencies.
 
 export const PALMS_COUNT_KEYS = [
   'present',
@@ -85,14 +86,16 @@ export class PalmsParseError extends Error {
 // SpreadsheetML reading
 // ---------------------------------------------------------------------------
 
-interface SheetCell {
+export interface SheetCell {
   type: string;
   text: string;
 }
 
-type SheetRow = Map<number, SheetCell>;
+/** 1-based column index → cell. */
+export type SheetRow = Map<number, SheetCell>;
 
-interface Sheet {
+/** `rows[0]` is spreadsheet row 1. */
+export interface Sheet {
   name: string;
   rows: SheetRow[];
 }
@@ -433,14 +436,29 @@ export function palmsDisplayName(rawName: string) {
   return rawName.trim().split(/\s+/)[0] ?? '';
 }
 
+/** BNI Connect 的「會員紅綠燈」(Traffic Light Report): six months of already-scored totals, not one PALMS period. */
+function isTrafficLightReport(sheets: Sheet[]) {
+  return sheets.some((sheet) => {
+    if (/traffic\s*light|紅綠燈/i.test(sheet.name)) return true;
+    return sheet.rows.slice(0, 10).some((row) => {
+      const labels = new Set(sortedCells(row).map(([, cell]) => compact(cell.text)));
+      return labels.has('得分') && labels.has('週') && labels.has(compact('出席率％'));
+    });
+  });
+}
+
+/** SpreadsheetML text (the `.xls` BNI Connect downloads) → report. */
 export function parsePalmsReport(input: string): PalmsReport {
   if (!/<[\w:]*Workbook\b/i.test(input)) {
     throw new PalmsParseError(
-      '這個檔案不是 BNI Connect 匯出的 PALMS 報告。請到 BNI Connect 的「分會 PALMS 摘要報告」按匯出，直接上傳下載到的 .xls，不要用 Excel 另存。',
+      '這個檔案不是 BNI Connect 匯出的 PALMS 報告。請到 BNI Connect 的「分會 PALMS 摘要報告」按匯出，上傳下載到的 .xls，或用 Excel 另存成 .xlsx 後上傳。',
     );
   }
+  return parsePalmsSheets(readSheets(input));
+}
 
-  const sheets = readSheets(input);
+/** Interprets already-read worksheets; shared by the SpreadsheetML and .xlsx readers. */
+export function parsePalmsSheets(sheets: Sheet[]): PalmsReport {
   let found: { sheet: Sheet; header: NonNullable<ReturnType<typeof findHeader>> } | null = null;
   for (const sheet of sheets) {
     const header = findHeader(sheet.rows);
@@ -450,6 +468,11 @@ export function parsePalmsReport(input: string): PalmsReport {
     }
   }
   if (!found) {
+    if (isTrafficLightReport(sheets)) {
+      throw new PalmsParseError(
+        '這是 BNI Connect 的「會員紅綠燈」報告（6 個月累計、已算好分數），不是 PALMS 摘要報告。系統要的是每個月一份的「分會 PALMS 摘要報告」，燈號會用最近 6 期自動計算。',
+      );
+    }
     throw new PalmsParseError(
       '找不到 PALMS 的表頭（姓氏、名字、出席…）。請確認上傳的是「分會 PALMS 摘要報告」，不是其他報表。',
     );

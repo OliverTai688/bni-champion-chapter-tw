@@ -6,10 +6,10 @@ import {
   checkPalmsTotals,
   countPalmsMeetings,
   palmsDisplayName,
-  parsePalmsReport,
   type PalmsChecksumLine,
   type PalmsCounts,
   type PalmsExtraRow,
+  type PalmsReport,
 } from '@/lib/tbx/palms-parser';
 import {
   DEFAULT_RULE_NAME,
@@ -319,8 +319,8 @@ function matchName(lookup: Map<string, string>, rawName: string) {
 }
 
 /** Parses a PALMS export and stores it as a draft period. Nothing counts toward lights until it is confirmed. */
-export async function importPalmsFile(input: { fileName: string; content: string; importedBy: string | null }) {
-  const report = parsePalmsReport(input.content);
+export async function importPalmsFile(input: { fileName: string; report: PalmsReport; importedBy: string | null }) {
+  const { report } = input;
   const members = await listChapterMembers();
   const lookup = buildMemberLookup(members);
 

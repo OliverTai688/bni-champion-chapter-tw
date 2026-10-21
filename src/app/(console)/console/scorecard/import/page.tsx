@@ -50,19 +50,19 @@ export default async function ScorecardImportPage() {
       <Card title="上傳這一期的檔案">
         <ActionForm action={importPalmsAction} className="flex flex-col gap-4">
           <label className="tb-label" htmlFor="palms-file">
-            PALMS 摘要報告（.xls）
+            PALMS 摘要報告（.xls 或 .xlsx）
             <input
               id="palms-file"
               name="file"
               type="file"
-              accept=".xls,.xml,application/vnd.ms-excel,text/xml,application/xml"
+              accept=".xls,.xlsx,.xml,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/xml,application/xml"
               required
               className="tb-input h-auto cursor-pointer py-2 file:mr-3 file:cursor-pointer file:rounded-md file:border-0 file:bg-tb-surf2 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-tb-text"
             />
           </label>
           <ol className="m-0 flex list-decimal flex-col gap-1 pl-5 text-sm text-tb-muted">
             <li>BNI Connect → 報告 → 分會 PALMS 摘要報告，選好起訖日期後匯出。</li>
-            <li>直接上傳下載到的檔案，不要先用 Excel 開啟另存。</li>
+            <li>直接上傳下載到的 .xls；用 Excel 開過的話，請另存成 .xlsx 再上傳。</li>
             <li>同一期間可以重複匯入（月中一次、月底一次），新檔確認後取代舊檔，舊檔留作歷史版本。</li>
           </ol>
           <div>
