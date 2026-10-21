@@ -35,9 +35,9 @@ export const ROSTER_1022: Roster = {
     '陳平', '王柏詠',
     '邱孟婷', '蘇冠霖', '張媁淇', '陳宜均',
     '邱柏瀚', '吳振綱', '陳志誠', '蘇子茵',
-    '馬廷軒', '程睿紳', '黃嘉琪', '林道元',
+    '馬廷軒', '程睿紳', '黃嘉琪', '梁文齡',
     '黃佳琪', '林育群', '洪麗卿', '戴嘉慧',
-    '洪宗宏', '梁文齡', '林塏秢', '王建豐',
+    '洪宗宏', '林道元', '林塏秢', '王建豐',
     '黃柔涵', '陳俊鳴',
   ],
 
@@ -86,12 +86,12 @@ export const LAYOUT_1022: SeatingLayout = {
       { id: 'g-3-2', name: '陳志誠', isGuest: false },
       { id: 'g-3-3', name: '蘇子茵', isGuest: false },
     ],
-    // 列 4：馬廷軒 / 程睿紳 / 黃嘉琪 / 林道元(攝影)
+    // 列 4：馬廷軒 / 程睿紳 / 黃嘉琪 / 梁文齡
     [
       { id: 'g-4-0', name: '馬廷軒', isGuest: false },
       { id: 'g-4-1', name: '程睿紳', isGuest: false },
       { id: 'g-4-2', name: '黃嘉琪', isGuest: false },
-      { id: 'g-4-3', name: '林道元', isGuest: false, isPhoto: true },
+      { id: 'g-4-3', name: '梁文齡', isGuest: false },
     ],
     // 列 5：黃佳琪 / 林育群 / 洪麗卿 / 戴嘉慧
     [
@@ -100,10 +100,10 @@ export const LAYOUT_1022: SeatingLayout = {
       { id: 'g-5-2', name: '洪麗卿', isGuest: false },
       { id: 'g-5-3', name: '戴嘉慧', isGuest: false },
     ],
-    // 列 6：洪宗宏 / 梁文齡 / 林塏秢 / 王建豐
+    // 列 6：洪宗宏 / 林道元(攝影) / 林塏秢 / 王建豐
     [
       { id: 'g-6-0', name: '洪宗宏', isGuest: false },
-      { id: 'g-6-1', name: '梁文齡', isGuest: false },
+      { id: 'g-6-1', name: '林道元', isGuest: false, isPhoto: true },
       { id: 'g-6-2', name: '林塏秢', isGuest: false },
       { id: 'g-6-3', name: '王建豐', isGuest: false },
     ],

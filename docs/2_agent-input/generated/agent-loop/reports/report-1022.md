@@ -49,3 +49,9 @@ Task IDs: 1022-LAYOUT
 - Publish: slug `2026-10-22-d2079e`, `publicStatus` published, logged as `public_event_publish` (same fields as `updateEventPublication()`).
 - Production check (HTTP fetch): `/e/2026-10-22` and `/e/2026-10-22-d2079e` return 200 and contain 劉彥余, 黃子宜, 陳宜均, 林子晏, 代理 and 攝影; `/` lists 115/10/22.
 - Not checked: browser rendering at 375 px, `/console` pages (need a leader login).
+
+## 6. Update (2026-10-21): 林道元 ↔ 梁文齡
+
+- Production: seat map v2 (`browser-draft`, saved from the grid editor at 15:18 UTC) already held the swap: 梁文齡 main-4-3, 林道元 (攝影) main-6-1. No other name changes from v1.
+- Floor plan rebuilt from v2 with `grid-to-floor-plan.mjs --week=2026-10-22 --write --replace` (the previous plan was the one written at 15:15 and had not been edited): 39 seated, 0 unmatched; 林道元 二排7 攝影, 梁文齡 四排5.
+- Code: `layout-1022.ts` updated to match v2. No re-seed, so v2 stays the active seat map.
