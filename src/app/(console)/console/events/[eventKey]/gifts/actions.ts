@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { fail, intValue, isObjectId, ok, optionalText, text, type ActionState } from '@/server/tbx/action';
+import { FORMER_CHAPTER_MEMBER_NAMES } from '@/lib/chapter-members';
+import { parseGiftList } from '@/lib/tbx/gift-list';
 import { getEventByKey } from '@/server/tbx/events';
 import {
   assignAward,
@@ -9,6 +11,7 @@ import {
   deleteAward,
   deleteGift,
   drawGift,
+  listGifts,
   moveGift,
   redrawAward,
   saveLotterySettings,
@@ -17,6 +20,7 @@ import {
   type GiftActor,
   type GiftInput,
 } from '@/server/tbx/gifts';
+import { listChapterMembers } from '@/server/tbx/members';
 import { requireLeader } from '@/server/tbx/viewer';
 
 /** Resolves the event named by the form and scopes every change to it. */
@@ -204,6 +208,47 @@ export async function saveLotterySettingsAction(_prev: ActionState, formData: Fo
     );
     refresh(event.weekId);
     return ok('已儲存抽獎池設定');
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+/**
+ * Pasted LINE 接龍 list: one numbered line becomes one gift. Lines already imported
+ * into this event (same line number and name) are skipped, so pasting twice is safe.
+ */
+export async function importGiftListAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    const viewer = await requireLeader();
+    const { event, actor } = await eventScope(formData, viewer.leaderName);
+    const list = text(formData, 'list');
+    if (!list) throw new Error('請貼上禮物清單。');
+    if (list.length > 20_000) throw new Error('清單太長，請分成幾次貼上。');
+
+    const members = await listChapterMembers();
+    const rows = parseGiftList(
+      list,
+      members.map((member) => ({ id: member.id, displayName: member.displayName, aliases: member.aliases })),
+      FORMER_CHAPTER_MEMBER_NAMES,
+    );
+    if (rows.length === 0) throw new Error('沒有讀到編號的品項。每一行請以「1.」「2.」這樣的編號開頭。');
+
+    const existing = await listGifts(event.id);
+    const imported = new Set(existing.map((gift) => `${gift.note ?? ''}|${gift.name}`));
+    let created = 0;
+    for (const row of rows) {
+      const note = [`清單 #${row.line}`, row.note].filter(Boolean).join('・');
+      const name = row.name.slice(0, 60);
+      if (imported.has(`${note}|${name}`)) continue;
+      await createGift(
+        { sessionId: event.id, name, quantity: 1, donorMemberId: row.donorMemberId, donorName: row.donorMemberId ? null : row.donorName, note },
+        actor,
+      );
+      created += 1;
+    }
+    refresh(event.weekId);
+    const skipped = rows.length - created;
+    return ok(`已新增 ${created} 份禮物${skipped ? `，${skipped} 份先前已匯入所以略過` : ''}。`);
   } catch (error) {
     return fail(error);
   }

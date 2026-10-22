@@ -11,9 +11,11 @@ import {
   type MemberOption,
   type PersonOption,
 } from '@/components/tbx/gifts/labels';
+import { GiftListImport } from '@/components/tbx/gifts/gift-list-import';
 import { PoolSettingsForm } from '@/components/tbx/gifts/pool-settings-form';
 import { ConfirmButton, QuietForm, RowSubmit } from '@/components/tbx/gifts/row-actions';
 import { Card, Empty, Stat } from '@/components/tbx/ui';
+import { FORMER_CHAPTER_MEMBER_NAMES } from '@/lib/chapter-members';
 import { formatDateTime } from '@/lib/tbx/labels';
 import { getEventByKey, isEventPublic } from '@/server/tbx/events';
 import { getLotteryPool, listGifts, type GiftAwardView, type GiftView } from '@/server/tbx/gifts';
@@ -264,6 +266,14 @@ export default async function EventGiftsPage({ params }: { params: Promise<{ eve
         </Card>
 
         <div className="flex min-w-0 flex-col gap-5">
+          <Card title="從清單一次新增">
+            <GiftListImport
+              eventKey={event.weekId}
+              members={roster.map((member) => ({ id: member.id, displayName: member.displayName, aliases: member.aliases }))}
+              formerNames={FORMER_CHAPTER_MEMBER_NAMES}
+            />
+          </Card>
+
           <Card title="抽獎前台">
             <div className="flex flex-col gap-3">
               <p className="text-sm text-tb-muted">
