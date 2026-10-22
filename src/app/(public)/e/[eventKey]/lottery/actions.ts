@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import type { StageDrawResult } from '@/components/tbx/gifts/labels';
 import { isObjectId } from '@/server/tbx/action';
 import { getEventByKey } from '@/server/tbx/events';
-import { drawGift, redrawAward, type DrawResult, type GiftActor } from '@/server/tbx/gifts';
+import { drawGift, drawRandomGift, redrawAward, type DrawResult, type GiftActor } from '@/server/tbx/gifts';
 import { requireLeader } from '@/server/tbx/viewer';
 
 /**
@@ -33,6 +33,7 @@ function toResult(result: DrawResult): StageDrawResult {
     winnerName: result.award.winnerName,
     winnerKind: result.award.winnerKind,
     poolSize: result.poolSize,
+    giftName: result.gift.name,
   };
 }
 
@@ -60,6 +61,22 @@ export async function stageRedrawAction(eventKey: string, awardId: string): Prom
     if (typeof awardId !== 'string' || !isObjectId(awardId)) throw new Error('找不到這筆得獎紀錄，請重新整理頁面。');
     const { event, actor } = await stageScope(eventKey, viewer.leaderName);
     const result = await redrawAward(awardId, actor);
+    refresh(event.weekId);
+    return toResult(result);
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** Spins a random remaining gift. The winner is random, or the checked-in person the leader picked. */
+export async function stageSpinGiftAction(eventKey: string, participationId: string | null): Promise<StageDrawResult> {
+  try {
+    const viewer = await requireLeader();
+    if (participationId !== null && (typeof participationId !== 'string' || !isObjectId(participationId))) {
+      throw new Error('找不到這位得主，請重新選擇。');
+    }
+    const { event, actor } = await stageScope(eventKey, viewer.leaderName);
+    const result = await drawRandomGift(event.id, { participationId }, actor);
     refresh(event.weekId);
     return toResult(result);
   } catch (error) {

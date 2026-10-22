@@ -44,7 +44,16 @@ export function personOptionLabel(person: PersonOption) {
 
 /** Result of a draw made from the stage page. */
 export type StageDrawResult =
-  | { ok: true; awardId: string; giftId: string; winnerName: string; winnerKind: string | null; poolSize: number }
+  | {
+      ok: true;
+      awardId: string;
+      giftId: string;
+      winnerName: string;
+      winnerKind: string | null;
+      poolSize: number;
+      /** Set by the random-gift spin, which picks the gift on the server. */
+      giftName?: string;
+    }
   | { ok: false; message: string };
 
 export interface StageGift {

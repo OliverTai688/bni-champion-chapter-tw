@@ -118,6 +118,8 @@ export interface LotteryStageData {
   poolSize: number;
   /** Names for the rolling animation. Empty unless `includePoolNames` was requested. */
   poolNames: string[];
+  /** Checked-in people a leader can name as the winner of a random-gift spin. Leaders only. */
+  presentPeople: Array<{ participationId: string; name: string; kind: string }>;
 }
 
 type Tx = Prisma.TransactionClient;
@@ -647,6 +649,85 @@ export async function drawGift(giftId: string, actor: GiftActor = {}): Promise<D
 }
 
 /**
+ * Spins a random gift: every remaining gift unit of the event has the same chance.
+ * The winner is drawn at random from the pool, or is the person given in
+ * `participationId` (for example the 長冠軍之星 spinning for their own prize).
+ */
+export async function drawRandomGift(
+  sessionId: string,
+  options: { participationId?: string | null } = {},
+  actor: GiftActor = {},
+): Promise<DrawResult> {
+  assertId(sessionId, '找不到這場活動，請重新整理頁面。');
+  const rows = await loadRows(sessionId, true);
+  const settings = await settingsFor(sessionId);
+  const chosenId = clean(options.participationId);
+  if (chosenId) assertId(chosenId, '找不到這位得主，請重新選擇。');
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const gifts = await prisma.gift.findMany({
+      where: { sessionId },
+      select: { id: true, quantity: true, awards: { where: { status: 'awarded' }, select: { id: true } } },
+    });
+    // One ticket per remaining unit, so a gift with 3 left is three times as likely.
+    const tickets = gifts.flatMap((gift) => Array<string>(Math.max(0, gift.quantity - gift.awards.length)).fill(gift.id));
+    if (tickets.length === 0) throw new Error('所有禮物都抽完了。');
+    const giftId = tickets[randomInt(tickets.length)];
+
+    try {
+      const { award, gift, poolSize } = await withGiftLock(giftId, async (tx, gift) => {
+        const awarded = await tx.giftAward.count({ where: { giftId: gift.id, status: 'awarded' } });
+        if (awarded >= gift.quantity) throw new GiftTakenError();
+
+        const pool = buildPool(rows, settings, await currentWinners(tx, gift.sessionId));
+        let winner: PresentPerson | undefined;
+        if (chosenId) {
+          winner = pool.present.find((person) => person.participationId === chosenId);
+          if (!winner) throw new Error('指定的得主不在已簽到名單裡，請重新選擇。');
+        } else {
+          if (pool.size === 0) throw new Error(emptyPoolMessage(pool));
+          winner = pickRandom(pool.people);
+        }
+        const award = await tx.giftAward.create({
+          data: {
+            ...randomAwardData(gift.id, winner, pool.size),
+            ...(chosenId ? { method: 'manual', editedBy: actor.actorName ?? null, note: '指定得主，禮物隨機抽出' } : { note: '禮物隨機抽出' }),
+          },
+        });
+        return { award, gift, poolSize: pool.size };
+      });
+
+      await logOperation({
+        sessionId: gift.sessionId,
+        actorRole: 'admin',
+        actorName: actor.actorName,
+        action: 'gift_random_drawn',
+        targetType: 'GiftAward',
+        targetId: award.id,
+        metadata: {
+          giftId: gift.id,
+          giftName: gift.name,
+          giftTickets: tickets.length,
+          winnerName: award.winnerName,
+          winnerKind: award.winnerKind,
+          winnerChosen: Boolean(chosenId),
+          poolSize,
+          seed: award.seed,
+        },
+      });
+      return { award: toAwardView(award), gift: { id: gift.id, sessionId: gift.sessionId, name: gift.name, quantity: gift.quantity }, poolSize };
+    } catch (error) {
+      // Someone took the last unit of that gift a moment ago: spin again.
+      if (error instanceof GiftTakenError) continue;
+      throw error;
+    }
+  }
+  throw new Error('同一時間有其他人在抽獎，請再按一次。');
+}
+
+class GiftTakenError extends Error {}
+
+/**
  * Replaces a current award with a new random draw. The old award stays as
  * history (`status: 'redrawn'`). The previous winner, and anyone already
  * redrawn for this gift, is left out of the new draw.
@@ -944,5 +1025,9 @@ export async function getLotteryStage(
     winners,
     poolSize: pool.size,
     poolNames: options.includePoolNames ? [...new Set(pool.people.map((person) => person.name.trim()).filter(Boolean))] : [],
+    // Leaders only: who can be named as the winner of a random-gift spin.
+    presentPeople: options.includePoolNames
+      ? pool.present.map((person) => ({ participationId: person.participationId, name: person.name, kind: person.kind }))
+      : [],
   };
 }

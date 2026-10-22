@@ -50,6 +50,7 @@ export default async function LotteryPage({ params }: { params: Promise<{ eventK
         winners={toStageWinners(data.winners)}
         poolSize={data.poolSize}
         poolNames={data.poolNames}
+        presentPeople={data.presentPeople}
       />
     );
   }

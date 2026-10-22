@@ -3,12 +3,9 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Maximize, Minimize } from 'lucide-react';
-import { stageDrawAction, stageRedrawAction } from '@/app/(public)/e/[eventKey]/lottery/actions';
+import { stageRedrawAction, stageSpinGiftAction } from '@/app/(public)/e/[eventKey]/lottery/actions';
 import { winnerKindChip, winnerKindLabel, type StageDrawResult, type StageGift, type StageWinner } from '@/components/tbx/gifts/labels';
 import { cn } from '@/lib/utils';
-
-type Phase = 'idle' | 'rolling' | 'revealed';
-type Shown = { awardId: string; name: string; kind: string | null };
 
 /** Names cycle quickly for at least this long, then slow down and stop. */
 const FAST_MS = 1700;
@@ -58,6 +55,9 @@ export function stageNameSize(name: string) {
   return `clamp(34px, min(${width.toFixed(1)}cqw, 30vh), 300px)`;
 }
 
+type SpinPhase = 'idle' | 'rollingGift' | 'rollingWinner' | 'revealed';
+type SpinResult = { awardId: string; giftId: string; giftName: string; name: string; kind: string | null };
+
 export function LotteryStage({
   eventKey,
   eventTitle,
@@ -66,6 +66,7 @@ export function LotteryStage({
   winners,
   poolSize,
   poolNames,
+  presentPeople,
 }: {
   eventKey: string;
   eventTitle: string;
@@ -73,22 +74,20 @@ export function LotteryStage({
   gifts: StageGift[];
   winners: StageWinner[];
   poolSize: number;
-  /** Names only, for the rolling animation. The winner is always picked on the server. */
+  /** Names only, for the rolling animation. The gift and the winner are always picked on the server. */
   poolNames: string[];
+  /** Checked-in people who can be named as the winner instead of a random draw. */
+  presentPeople: Array<{ participationId: string; name: string; kind: string }>;
 }) {
   const router = useRouter();
-  const ordered = useMemo(
-    () => [...gifts.filter((gift) => gift.remaining > 0), ...gifts.filter((gift) => gift.remaining === 0)],
-    [gifts],
-  );
-
-  const [selectedId, setSelectedId] = useState<string | null>(() => ordered[0]?.id ?? null);
-  const [phase, setPhase] = useState<Phase>('idle');
-  const [confirm, setConfirm] = useState<null | 'draw' | 'redraw'>(null);
-  const [rollName, setRollName] = useState('');
-  const [result, setResult] = useState<Shown | null>(null);
+  const [phase, setPhase] = useState<SpinPhase>('idle');
+  const [confirm, setConfirm] = useState<null | 'spin' | 'redraw'>(null);
+  const [giftRoll, setGiftRoll] = useState('');
+  const [nameRoll, setNameRoll] = useState('');
+  const [result, setResult] = useState<SpinResult | null>(null);
+  const [chosen, setChosen] = useState('');
   const [error, setError] = useState<string | null>(null);
-  // While names are rolling the server data may already contain the result; keep showing the list from before.
+  // While rolling the server data may already contain the result; keep showing the list from before.
   const [frozenWinners, setFrozenWinners] = useState<StageWinner[] | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const aliveRef = useRef(true);
@@ -100,14 +99,16 @@ export function LotteryStage({
     };
   }, []);
 
+  const rolling = phase === 'rollingGift' || phase === 'rollingWinner';
+
   // Pick up new check-ins and changes made on the console. Paused while rolling.
   useEffect(() => {
-    if (phase === 'rolling') return;
+    if (rolling) return;
     const id = window.setInterval(() => {
       if (document.visibilityState === 'visible') router.refresh();
     }, REFRESH_MS);
     return () => window.clearInterval(id);
-  }, [phase, router]);
+  }, [rolling, router]);
 
   useEffect(() => {
     const onChange = () => setFullscreen(Boolean(document.fullscreenElement));
@@ -115,76 +116,106 @@ export function LotteryStage({
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
-  const selected = gifts.find((gift) => gift.id === selectedId) ?? ordered[0] ?? null;
-  const rolling = phase === 'rolling';
-  const hasRemaining = gifts.some((gift) => gift.remaining > 0);
-
-  let shown: Shown | null = null;
-  if (phase === 'revealed' && result) {
-    // Prefer the live record so a change made on the console shows up here too.
-    shown = selected?.winners.find((winner) => winner.awardId === result.awardId) ?? result;
-  } else if (phase === 'idle' && selected && selected.remaining === 0) {
-    shown = selected.winners[selected.winners.length - 1] ?? null;
-  }
-  // Hidden while rolling: the refreshed data may already name the new winner.
-  const earlier = selected && !rolling ? selected.winners.filter((winner) => winner.awardId !== shown?.awardId) : [];
-  const canDraw = phase === 'idle' && Boolean(selected) && (selected?.remaining ?? 0) > 0;
+  // One entry per remaining unit, the same odds the server uses.
+  const giftTickets = useMemo(() => gifts.flatMap((gift) => Array<string>(gift.remaining).fill(gift.name)), [gifts]);
+  const remainingUnits = giftTickets.length;
+  const totalUnits = gifts.reduce((sum, gift) => sum + gift.quantity, 0);
   const listed = frozenWinners ?? winners;
+  const resultGift = result ? gifts.find((gift) => gift.id === result.giftId) ?? null : null;
+  const chosenPerson = presentPeople.find((person) => person.participationId === chosen) ?? null;
+  const canSpin = !rolling && remainingUnits > 0 && (chosenPerson !== null || poolSize > 0);
 
-  async function run(kind: 'draw' | 'redraw') {
-    if (!selected || rolling) return;
-    const giftId = selected.id;
-    const target = kind === 'redraw' ? shown : null;
-    if (kind === 'redraw' && !target) return;
-
-    const previousPhase = phase;
+  async function spin() {
+    if (!canSpin) return;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const names = shuffle(target ? poolNames.filter((name) => name !== target.name) : poolNames);
-
-    setSelectedId(giftId);
     setConfirm(null);
     setError(null);
+    setResult(null);
     setFrozenWinners(winners);
-    setRollName(reduced ? '' : names[0] ?? '');
-    setPhase('rolling');
+    setNameRoll('');
+    setGiftRoll(reduced ? '' : giftTickets[0] ?? '');
+    setPhase('rollingGift');
 
     const box: { value: StageDrawResult | null } = { value: null };
-    const request = (target ? stageRedrawAction(eventKey, target.awardId) : stageDrawAction(eventKey, giftId))
+    const request = stageSpinGiftAction(eventKey, chosenPerson?.participationId ?? null)
       .catch((): StageDrawResult => ({ ok: false, message: '連線失敗，不確定有沒有抽出。請看右側得主名單確認後再操作。' }))
       .then((value) => {
         box.value = value;
         return value;
       });
+    const status = () => (!aliveRef.current ? 'stop' : !box.value ? 'waiting' : box.value.ok ? 'ok' : 'stop');
 
-    // People who prefer reduced motion skip the rolling and go straight to the result.
-    if (!reduced) {
-      await rollNames(names, setRollName, () => (!aliveRef.current ? 'stop' : !box.value ? 'waiting' : box.value.ok ? 'ok' : 'stop'));
+    if (!reduced) await rollNames(shuffle(giftTickets), setGiftRoll, status);
+    const outcome = await request;
+    if (!aliveRef.current) return;
+    if (!outcome.ok) {
+      setFrozenWinners(null);
+      setError(outcome.message);
+      setPhase('idle');
+      router.refresh();
+      return;
     }
 
+    setGiftRoll(outcome.giftName ?? '');
+    if (!chosenPerson && !reduced) {
+      // The gift is out; now roll the names for a moment before showing who gets it.
+      setPhase('rollingWinner');
+      await rollNames(shuffle(poolNames), setNameRoll, () => (aliveRef.current ? 'ok' : 'stop'));
+      if (!aliveRef.current) return;
+    }
+    setFrozenWinners(null);
+    setResult({
+      awardId: outcome.awardId,
+      giftId: outcome.giftId,
+      giftName: outcome.giftName ?? '',
+      name: outcome.winnerName,
+      kind: outcome.winnerKind,
+    });
+    setPhase('revealed');
+    setChosen('');
+  }
+
+  async function redraw() {
+    if (!result || rolling) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const previous = result;
+    setConfirm(null);
+    setError(null);
+    setFrozenWinners(winners);
+    setNameRoll('');
+    setPhase('rollingWinner');
+
+    const box: { value: StageDrawResult | null } = { value: null };
+    const request = stageRedrawAction(eventKey, previous.awardId)
+      .catch((): StageDrawResult => ({ ok: false, message: '連線失敗，不確定有沒有重抽。請看右側得主名單確認後再操作。' }))
+      .then((value) => {
+        box.value = value;
+        return value;
+      });
+    if (!reduced) {
+      await rollNames(shuffle(poolNames.filter((name) => name !== previous.name)), setNameRoll, () =>
+        !aliveRef.current ? 'stop' : !box.value ? 'waiting' : box.value.ok ? 'ok' : 'stop',
+      );
+    }
     const outcome = await request;
     if (!aliveRef.current) return;
     setFrozenWinners(null);
     if (outcome.ok) {
-      setResult({ awardId: outcome.awardId, name: outcome.winnerName, kind: outcome.winnerKind });
-      setPhase('revealed');
+      setResult({ ...previous, awardId: outcome.awardId, name: outcome.winnerName, kind: outcome.winnerKind });
     } else {
       setError(outcome.message);
-      setPhase(previousPhase === 'revealed' ? 'revealed' : 'idle');
       router.refresh();
     }
-  }
-
-  function selectGift(id: string) {
-    setSelectedId(id);
-    setResult(null);
-    setPhase('idle');
-    setConfirm(null);
-    setError(null);
+    setPhase('revealed');
   }
 
   function next() {
-    const target = selected && selected.remaining > 0 ? selected : ordered.find((gift) => gift.remaining > 0);
-    selectGift(target?.id ?? selected?.id ?? '');
+    setResult(null);
+    setGiftRoll('');
+    setNameRoll('');
+    setConfirm(null);
+    setError(null);
+    setPhase('idle');
   }
 
   function toggleFullscreen() {
@@ -192,7 +223,8 @@ export function LotteryStage({
     else void document.documentElement.requestFullscreen?.().catch(() => undefined);
   }
 
-  const bigName = rolling ? rollName : shown?.name ?? '';
+  const giftText = phase === 'idle' ? '' : phase === 'rollingGift' ? giftRoll : result?.giftName || giftRoll;
+  const nameText = phase === 'rollingWinner' ? nameRoll : phase === 'revealed' ? result?.name ?? '' : '';
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -208,76 +240,99 @@ export function LotteryStage({
       </header>
 
       <div className="grid flex-1 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="flex min-w-0 flex-col items-center justify-center gap-6 px-5 py-8 text-center" aria-label="抽獎舞台">
-          {selected ? (
+        <section className="flex min-w-0 flex-col items-center justify-center gap-5 px-5 py-8 text-center" aria-label="抽獎舞台">
+          {gifts.length === 0 ? (
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xl font-bold">這場活動還沒有禮物</p>
+              <p className="max-w-[44ch] text-sm text-tb-muted">請先到領導團隊中控的「禮物」頁新增禮物，這裡會自動出現。</p>
+            </div>
+          ) : (
             <>
-              <div className="flex flex-col items-center gap-2">
-                <p className="tb-eyebrow">{selected.quantity > 1 ? `目前禮物・共 ${selected.quantity} 份` : '目前禮物'}</p>
-                <h2 className="break-words font-bold leading-tight" style={{ fontSize: 'clamp(28px, 5vw, 72px)' }}>
-                  {selected.name}
-                </h2>
-                <p className="text-tb-muted" style={{ fontSize: 'clamp(15px, 1.8vw, 26px)' }}>
-                  提供者：{selected.donor ?? '未登記'}
-                  <span className="mx-3 text-tb-faint">|</span>
-                  抽獎池 <span className="tb-num font-semibold text-tb-text">{poolSize}</span> 人
-                </p>
+              <p className="text-tb-muted" style={{ fontSize: 'clamp(15px, 1.8vw, 24px)' }}>
+                還有 <span className="tb-num font-semibold text-tb-text">{remainingUnits}</span> / {totalUnits} 份禮物
+                <span className="mx-3 text-tb-faint">|</span>
+                抽獎池 <span className="tb-num font-semibold text-tb-text">{poolSize}</span> 人
+              </p>
+
+              <div
+                className="flex min-h-[18vh] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-tb-line bg-tb-surf px-4 py-5"
+                style={{ containerType: 'inline-size' }}
+              >
+                <p className="tb-eyebrow">{phase === 'rollingGift' ? '轉禮物中' : '禮物'}</p>
+                {giftText ? (
+                  <>
+                    <p
+                      className={cn('max-w-full break-words font-bold leading-tight', phase === 'rollingGift' ? 'text-tb-muted' : 'text-tb-gold')}
+                      style={{ fontSize: 'clamp(26px, 6cqw, 84px)' }}
+                      aria-hidden={phase === 'rollingGift'}
+                    >
+                      {giftText}
+                    </p>
+                    {phase !== 'rollingGift' && resultGift?.donor ? (
+                      <p className="text-tb-muted" style={{ fontSize: 'clamp(14px, 2cqw, 24px)' }}>
+                        {resultGift.donor} 提供
+                      </p>
+                    ) : null}
+                  </>
+                ) : (
+                  <p className="text-tb-faint" style={{ fontSize: 'clamp(18px, 3cqw, 36px)' }}>
+                    {remainingUnits === 0 ? '所有禮物都抽完了' : '按「開抽」隨機轉出一份禮物'}
+                  </p>
+                )}
               </div>
 
               <div
-                className="flex min-h-[34vh] w-full flex-col items-center justify-center gap-4 rounded-2xl border border-tb-line bg-tb-surf px-4 py-6"
+                className="flex min-h-[24vh] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-tb-line bg-tb-surf px-4 py-5"
                 style={{ containerType: 'inline-size' }}
               >
-                {bigName ? (
+                <p className="tb-eyebrow">{phase === 'rollingWinner' ? '抽得主中' : '得主'}</p>
+                {nameText ? (
                   <>
-                    <p className="tb-eyebrow">{rolling ? '抽獎中' : '得主'}</p>
                     <p
                       className={cn(
                         'max-w-full break-words font-black leading-none transition-transform duration-500',
-                        rolling ? 'scale-90 text-tb-muted' : 'scale-100 text-tb-text',
+                        phase === 'rollingWinner' ? 'scale-90 text-tb-muted' : 'scale-100 text-tb-text',
                       )}
-                      style={{ fontSize: stageNameSize(bigName) }}
-                      aria-hidden={rolling}
+                      style={{ fontSize: stageNameSize(nameText) }}
+                      aria-hidden={phase === 'rollingWinner'}
                     >
-                      {bigName}
+                      {nameText}
                     </p>
-                    {!rolling && shown ? <span className={winnerKindChip(shown.kind)}>{winnerKindLabel(shown.kind)}</span> : null}
+                    {phase === 'revealed' && result ? <span className={winnerKindChip(result.kind)}>{winnerKindLabel(result.kind)}</span> : null}
                   </>
                 ) : (
-                  <p className="text-tb-faint" style={{ fontSize: 'clamp(18px, 3cqw, 40px)' }}>
-                    {rolling ? '抽獎中…' : poolSize === 0 ? '抽獎池還沒有人，請先完成簽到' : '按「開抽」抽出得主'}
+                  <p className="text-tb-faint" style={{ fontSize: 'clamp(16px, 2.6cqw, 32px)' }}>
+                    {chosenPerson ? `這次由 ${chosenPerson.name} 得到轉出的禮物` : poolSize === 0 ? '抽獎池還沒有人，請先完成簽到' : '禮物轉出後抽出得主'}
                   </p>
                 )}
               </div>
 
               <p className="sr-only" role="status" aria-live="polite">
-                {!rolling && shown ? `${selected.name} 的得主是 ${shown.name}` : ''}
+                {phase === 'revealed' && result ? `${result.giftName} 的得主是 ${result.name}` : ''}
               </p>
 
-              {earlier.length > 0 ? (
-                <p className="text-sm text-tb-muted">
-                  這份禮物的其他得主：{earlier.map((winner) => winner.name).join('、')}
-                </p>
-              ) : null}
-
               <div className="flex w-full max-w-xl flex-col items-center gap-3">
-                <label className="tb-label w-full text-left" htmlFor="stage-gift">
-                  要抽的禮物
-                  <select
-                    id="stage-gift"
-                    className="tb-select min-h-[44px]"
-                    value={selected.id}
-                    disabled={rolling}
-                    onChange={(event) => selectGift(event.target.value)}
-                  >
-                    {ordered.map((gift) => (
-                      <option key={gift.id} value={gift.id}>
-                        {gift.name}
-                        {gift.quantity > 1 ? ` ×${gift.quantity}` : ''}
-                        {gift.remaining === 0 ? '（已抽完）' : gift.quantity > 1 ? `（剩 ${gift.remaining} 份）` : '（待抽）'}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {phase === 'idle' ? (
+                  <label className="tb-label w-full text-left" htmlFor="stage-winner">
+                    得主
+                    <select
+                      id="stage-winner"
+                      className="tb-select min-h-[44px]"
+                      value={chosen}
+                      onChange={(event) => {
+                        setChosen(event.target.value);
+                        setConfirm(null);
+                      }}
+                    >
+                      <option value="">從抽獎池隨機抽出</option>
+                      {presentPeople.map((person) => (
+                        <option key={person.participationId} value={person.participationId}>
+                          指定：{person.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
 
                 <div className="flex flex-wrap items-center justify-center gap-3">
                   {rolling ? (
@@ -286,19 +341,14 @@ export function LotteryStage({
                     </button>
                   ) : null}
 
-                  {canDraw && confirm !== 'draw' ? (
-                    <button
-                      type="button"
-                      className="tb-btn tb-btn-gold tb-btn-lg min-w-[160px]"
-                      disabled={poolSize === 0}
-                      onClick={() => setConfirm('draw')}
-                    >
+                  {phase === 'idle' && confirm !== 'spin' ? (
+                    <button type="button" className="tb-btn tb-btn-gold tb-btn-lg min-w-[160px]" disabled={!canSpin} onClick={() => setConfirm('spin')}>
                       開抽
                     </button>
                   ) : null}
-                  {canDraw && confirm === 'draw' ? (
+                  {phase === 'idle' && confirm === 'spin' ? (
                     <>
-                      <button type="button" className="tb-btn tb-btn-gold tb-btn-lg" onClick={() => void run('draw')}>
+                      <button type="button" className="tb-btn tb-btn-gold tb-btn-lg" onClick={() => void spin()}>
                         確定開抽
                       </button>
                       <button type="button" className="tb-btn tb-btn-quiet tb-btn-lg" onClick={() => setConfirm(null)}>
@@ -307,14 +357,14 @@ export function LotteryStage({
                     </>
                   ) : null}
 
-                  {!rolling && shown && confirm !== 'redraw' ? (
+                  {phase === 'revealed' && result && confirm !== 'redraw' ? (
                     <button type="button" className="tb-btn tb-btn-outline tb-btn-lg" onClick={() => setConfirm('redraw')}>
-                      重抽
+                      重抽得主
                     </button>
                   ) : null}
-                  {!rolling && shown && confirm === 'redraw' ? (
+                  {phase === 'revealed' && result && confirm === 'redraw' ? (
                     <>
-                      <button type="button" className="tb-btn tb-btn-outline tb-btn-lg" onClick={() => void run('redraw')}>
+                      <button type="button" className="tb-btn tb-btn-outline tb-btn-lg" onClick={() => void redraw()}>
                         確定重抽
                       </button>
                       <button type="button" className="tb-btn tb-btn-quiet tb-btn-lg" onClick={() => setConfirm(null)}>
@@ -323,17 +373,16 @@ export function LotteryStage({
                     </>
                   ) : null}
 
-                  {!rolling && shown && confirm === null && hasRemaining ? (
-                    <button type="button" className="tb-btn tb-btn-lg" onClick={next}>
+                  {phase === 'revealed' && confirm === null ? (
+                    <button type="button" className="tb-btn tb-btn-gold tb-btn-lg" onClick={next} disabled={remainingUnits === 0}>
                       下一份
                     </button>
                   ) : null}
                 </div>
 
-                {confirm === 'redraw' && shown ? (
-                  <p className="text-sm text-tb-muted">重抽後，{shown.name} 的結果會留在紀錄裡，並從這份禮物的抽獎池排除。</p>
+                {confirm === 'redraw' && result ? (
+                  <p className="text-sm text-tb-muted">禮物不變，重新抽一位得主。{result.name} 的結果會留在紀錄裡。</p>
                 ) : null}
-                {!rolling && shown && !hasRemaining ? <p className="text-sm text-tb-muted">所有禮物都抽完了。</p> : null}
                 {error ? (
                   <p role="alert" className="tb-form-error">
                     {error}
@@ -341,11 +390,6 @@ export function LotteryStage({
                 ) : null}
               </div>
             </>
-          ) : (
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-xl font-bold">這場活動還沒有禮物</p>
-              <p className="max-w-[44ch] text-sm text-tb-muted">請先到領導團隊中控的「禮物」頁新增禮物，這裡會自動出現。</p>
-            </div>
           )}
         </section>
 
