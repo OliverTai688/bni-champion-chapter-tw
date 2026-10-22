@@ -68,13 +68,11 @@ export async function stageRedrawAction(eventKey: string, awardId: string): Prom
   }
 }
 
-/** Spins a random remaining gift. The winner is random, or the checked-in person the leader picked. */
-export async function stageSpinGiftAction(eventKey: string, participationId: string | null): Promise<StageDrawResult> {
+/** Spins a random remaining gift for the person the leader picked (normally the 長冠軍之星 first place). */
+export async function stageSpinGiftAction(eventKey: string, participationId: string): Promise<StageDrawResult> {
   try {
     const viewer = await requireLeader();
-    if (participationId !== null && (typeof participationId !== 'string' || !isObjectId(participationId))) {
-      throw new Error('找不到這位得主，請重新選擇。');
-    }
+    if (typeof participationId !== 'string' || !isObjectId(participationId)) throw new Error('請先選擇這份禮物的得主。');
     const { event, actor } = await stageScope(eventKey, viewer.leaderName);
     const result = await drawRandomGift(event.id, { participationId }, actor);
     refresh(event.weekId);

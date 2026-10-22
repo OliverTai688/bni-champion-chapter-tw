@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Maximize, Minimize } from 'lucide-react';
-import { stageRedrawAction, stageSpinGiftAction } from '@/app/(public)/e/[eventKey]/lottery/actions';
+import { stageSpinGiftAction } from '@/app/(public)/e/[eventKey]/lottery/actions';
 import { winnerKindChip, winnerKindLabel, type StageDrawResult, type StageGift, type StageWinner } from '@/components/tbx/gifts/labels';
 import { cn } from '@/lib/utils';
 
@@ -55,7 +55,7 @@ export function stageNameSize(name: string) {
   return `clamp(34px, min(${width.toFixed(1)}cqw, 30vh), 300px)`;
 }
 
-type SpinPhase = 'idle' | 'rollingGift' | 'rollingWinner' | 'revealed';
+type SpinPhase = 'idle' | 'rollingGift' | 'revealed';
 type SpinResult = { awardId: string; giftId: string; giftName: string; name: string; kind: string | null };
 
 export function LotteryStage({
@@ -65,8 +65,8 @@ export function LotteryStage({
   gifts,
   winners,
   poolSize,
-  poolNames,
-  presentPeople,
+  candidates,
+  starWinners,
 }: {
   eventKey: string;
   eventTitle: string;
@@ -74,18 +74,21 @@ export function LotteryStage({
   gifts: StageGift[];
   winners: StageWinner[];
   poolSize: number;
-  /** Names only, for the rolling animation. The gift and the winner are always picked on the server. */
+  /** Unused here since the winner is chosen, kept for the page contract. */
   poolNames: string[];
-  /** Checked-in people who can be named as the winner instead of a random draw. */
-  presentPeople: Array<{ participationId: string; name: string; kind: string }>;
+  /** Everyone on the attendance list, for choosing who receives the spun gift. */
+  candidates: Array<{ participationId: string; name: string; kind: string; present: boolean }>;
+  /** 長冠軍之星 first place; more than one entry means a tie. */
+  starWinners: Array<{ participationId: string | null; name: string; votes: number }>;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<SpinPhase>('idle');
-  const [confirm, setConfirm] = useState<null | 'spin' | 'redraw'>(null);
+  const [confirm, setConfirm] = useState<null | 'spin'>(null);
   const [giftRoll, setGiftRoll] = useState('');
-  const [nameRoll, setNameRoll] = useState('');
   const [result, setResult] = useState<SpinResult | null>(null);
-  const [chosen, setChosen] = useState('');
+  // The gift goes to the 長冠軍之星 first place; a tie or a missing poll means the leader picks.
+  const defaultRecipient = starWinners.length === 1 ? starWinners[0].participationId ?? '' : '';
+  const [chosen, setChosen] = useState(defaultRecipient);
   const [error, setError] = useState<string | null>(null);
   // While rolling the server data may already contain the result; keep showing the list from before.
   const [frozenWinners, setFrozenWinners] = useState<StageWinner[] | null>(null);
@@ -99,7 +102,7 @@ export function LotteryStage({
     };
   }, []);
 
-  const rolling = phase === 'rollingGift' || phase === 'rollingWinner';
+  const rolling = phase === 'rollingGift';
 
   // Pick up new check-ins and changes made on the console. Paused while rolling.
   useEffect(() => {
@@ -122,8 +125,9 @@ export function LotteryStage({
   const totalUnits = gifts.reduce((sum, gift) => sum + gift.quantity, 0);
   const listed = frozenWinners ?? winners;
   const resultGift = result ? gifts.find((gift) => gift.id === result.giftId) ?? null : null;
-  const chosenPerson = presentPeople.find((person) => person.participationId === chosen) ?? null;
-  const canSpin = !rolling && remainingUnits > 0 && (chosenPerson !== null || poolSize > 0);
+  const chosenPerson = candidates.find((person) => person.participationId === chosen) ?? null;
+  const canSpin = !rolling && remainingUnits > 0 && chosenPerson !== null;
+  const starIds = new Set(starWinners.map((winner) => winner.participationId).filter(Boolean));
 
   async function spin() {
     if (!canSpin) return;
@@ -132,12 +136,12 @@ export function LotteryStage({
     setError(null);
     setResult(null);
     setFrozenWinners(winners);
-    setNameRoll('');
     setGiftRoll(reduced ? '' : giftTickets[0] ?? '');
     setPhase('rollingGift');
 
     const box: { value: StageDrawResult | null } = { value: null };
-    const request = stageSpinGiftAction(eventKey, chosenPerson?.participationId ?? null)
+    if (!chosenPerson) return;
+    const request = stageSpinGiftAction(eventKey, chosenPerson.participationId)
       .catch((): StageDrawResult => ({ ok: false, message: '連線失敗，不確定有沒有抽出。請看右側得主名單確認後再操作。' }))
       .then((value) => {
         box.value = value;
@@ -157,12 +161,6 @@ export function LotteryStage({
     }
 
     setGiftRoll(outcome.giftName ?? '');
-    if (!chosenPerson && !reduced) {
-      // The gift is out; now roll the names for a moment before showing who gets it.
-      setPhase('rollingWinner');
-      await rollNames(shuffle(poolNames), setNameRoll, () => (aliveRef.current ? 'ok' : 'stop'));
-      if (!aliveRef.current) return;
-    }
     setFrozenWinners(null);
     setResult({
       awardId: outcome.awardId,
@@ -172,47 +170,11 @@ export function LotteryStage({
       kind: outcome.winnerKind,
     });
     setPhase('revealed');
-    setChosen('');
-  }
-
-  async function redraw() {
-    if (!result || rolling) return;
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const previous = result;
-    setConfirm(null);
-    setError(null);
-    setFrozenWinners(winners);
-    setNameRoll('');
-    setPhase('rollingWinner');
-
-    const box: { value: StageDrawResult | null } = { value: null };
-    const request = stageRedrawAction(eventKey, previous.awardId)
-      .catch((): StageDrawResult => ({ ok: false, message: '連線失敗，不確定有沒有重抽。請看右側得主名單確認後再操作。' }))
-      .then((value) => {
-        box.value = value;
-        return value;
-      });
-    if (!reduced) {
-      await rollNames(shuffle(poolNames.filter((name) => name !== previous.name)), setNameRoll, () =>
-        !aliveRef.current ? 'stop' : !box.value ? 'waiting' : box.value.ok ? 'ok' : 'stop',
-      );
-    }
-    const outcome = await request;
-    if (!aliveRef.current) return;
-    setFrozenWinners(null);
-    if (outcome.ok) {
-      setResult({ ...previous, awardId: outcome.awardId, name: outcome.winnerName, kind: outcome.winnerKind });
-    } else {
-      setError(outcome.message);
-      router.refresh();
-    }
-    setPhase('revealed');
   }
 
   function next() {
     setResult(null);
     setGiftRoll('');
-    setNameRoll('');
     setConfirm(null);
     setError(null);
     setPhase('idle');
@@ -224,7 +186,7 @@ export function LotteryStage({
   }
 
   const giftText = phase === 'idle' ? '' : phase === 'rollingGift' ? giftRoll : result?.giftName || giftRoll;
-  const nameText = phase === 'rollingWinner' ? nameRoll : phase === 'revealed' ? result?.name ?? '' : '';
+  const nameText = phase === 'revealed' ? result?.name ?? '' : chosenPerson?.name ?? '';
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -250,8 +212,6 @@ export function LotteryStage({
             <>
               <p className="text-tb-muted" style={{ fontSize: 'clamp(15px, 1.8vw, 24px)' }}>
                 還有 <span className="tb-num font-semibold text-tb-text">{remainingUnits}</span> / {totalUnits} 份禮物
-                <span className="mx-3 text-tb-faint">|</span>
-                抽獎池 <span className="tb-num font-semibold text-tb-text">{poolSize}</span> 人
               </p>
 
               <div
@@ -285,16 +245,15 @@ export function LotteryStage({
                 className="flex min-h-[24vh] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-tb-line bg-tb-surf px-4 py-5"
                 style={{ containerType: 'inline-size' }}
               >
-                <p className="tb-eyebrow">{phase === 'rollingWinner' ? '抽得主中' : '得主'}</p>
+                <p className="tb-eyebrow">{chosenPerson && starIds.has(chosenPerson.participationId) ? '長冠軍之星' : '得主'}</p>
                 {nameText ? (
                   <>
                     <p
                       className={cn(
                         'max-w-full break-words font-black leading-none transition-transform duration-500',
-                        phase === 'rollingWinner' ? 'scale-90 text-tb-muted' : 'scale-100 text-tb-text',
+                        phase === 'revealed' ? 'scale-100 text-tb-text' : 'scale-95 text-tb-muted',
                       )}
                       style={{ fontSize: stageNameSize(nameText) }}
-                      aria-hidden={phase === 'rollingWinner'}
                     >
                       {nameText}
                     </p>
@@ -302,7 +261,7 @@ export function LotteryStage({
                   </>
                 ) : (
                   <p className="text-tb-faint" style={{ fontSize: 'clamp(16px, 2.6cqw, 32px)' }}>
-                    {chosenPerson ? `這次由 ${chosenPerson.name} 得到轉出的禮物` : poolSize === 0 ? '抽獎池還沒有人，請先完成簽到' : '禮物轉出後抽出得主'}
+                    {starWinners.length > 1 ? `長冠軍之星同票：${starWinners.map((winner) => winner.name).join('、')}，請選擇得主` : '請在下方選擇得主'}
                   </p>
                 )}
               </div>
@@ -314,7 +273,7 @@ export function LotteryStage({
               <div className="flex w-full max-w-xl flex-col items-center gap-3">
                 {phase === 'idle' ? (
                   <label className="tb-label w-full text-left" htmlFor="stage-winner">
-                    得主
+                    得主{starWinners.length === 1 ? `（長冠軍之星第一名 ${starWinners[0].name}・${starWinners[0].votes} 票）` : ''}
                     <select
                       id="stage-winner"
                       className="tb-select min-h-[44px]"
@@ -324,10 +283,13 @@ export function LotteryStage({
                         setConfirm(null);
                       }}
                     >
-                      <option value="">從抽獎池隨機抽出</option>
-                      {presentPeople.map((person) => (
+                      <option value="">請選擇</option>
+                      {candidates.map((person) => (
                         <option key={person.participationId} value={person.participationId}>
-                          指定：{person.name}
+                          {starIds.has(person.participationId) ? '★ ' : ''}
+                          {person.name}
+                          {person.kind === 'guest' ? '（來賓）' : ''}
+                          {person.present ? '' : '（未簽到）'}
                         </option>
                       ))}
                     </select>
@@ -357,22 +319,6 @@ export function LotteryStage({
                     </>
                   ) : null}
 
-                  {phase === 'revealed' && result && confirm !== 'redraw' ? (
-                    <button type="button" className="tb-btn tb-btn-outline tb-btn-lg" onClick={() => setConfirm('redraw')}>
-                      重抽得主
-                    </button>
-                  ) : null}
-                  {phase === 'revealed' && result && confirm === 'redraw' ? (
-                    <>
-                      <button type="button" className="tb-btn tb-btn-outline tb-btn-lg" onClick={() => void redraw()}>
-                        確定重抽
-                      </button>
-                      <button type="button" className="tb-btn tb-btn-quiet tb-btn-lg" onClick={() => setConfirm(null)}>
-                        取消
-                      </button>
-                    </>
-                  ) : null}
-
                   {phase === 'revealed' && confirm === null ? (
                     <button type="button" className="tb-btn tb-btn-gold tb-btn-lg" onClick={next} disabled={remainingUnits === 0}>
                       下一份
@@ -380,9 +326,6 @@ export function LotteryStage({
                   ) : null}
                 </div>
 
-                {confirm === 'redraw' && result ? (
-                  <p className="text-sm text-tb-muted">禮物不變，重新抽一位得主。{result.name} 的結果會留在紀錄裡。</p>
-                ) : null}
                 {error ? (
                   <p role="alert" className="tb-form-error">
                     {error}

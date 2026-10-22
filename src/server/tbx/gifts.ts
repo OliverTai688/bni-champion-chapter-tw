@@ -5,6 +5,7 @@ import { Prisma, type Gift, type GiftAward, type Participation } from '@prisma/c
 import { prisma } from '@/server/db/prisma';
 import { getEventByKey } from '@/server/tbx/events';
 import { logOperation } from '@/server/tbx/log';
+import { listPollsForEvent } from '@/server/tbx/polls';
 import { getAttendance, presentPeople, type PresentPerson } from '@/server/tbx/participation';
 
 /* ------------------------------------------------------------------ */
@@ -118,8 +119,10 @@ export interface LotteryStageData {
   poolSize: number;
   /** Names for the rolling animation. Empty unless `includePoolNames` was requested. */
   poolNames: string[];
-  /** Checked-in people a leader can name as the winner of a random-gift spin. Leaders only. */
-  presentPeople: Array<{ participationId: string; name: string; kind: string }>;
+  /** Everyone on the attendance list, for choosing who receives the spun gift. Leaders only. */
+  candidates: Array<{ participationId: string; name: string; kind: string; present: boolean }>;
+  /** 長冠軍之星 first place of this event (ties list everyone tied). Leaders only. */
+  starWinners: Array<{ participationId: string | null; name: string; votes: number }>;
 }
 
 type Tx = Prisma.TransactionClient;
@@ -649,20 +652,28 @@ export async function drawGift(giftId: string, actor: GiftActor = {}): Promise<D
 }
 
 /**
- * Spins a random gift: every remaining gift unit of the event has the same chance.
- * The winner is drawn at random from the pool, or is the person given in
- * `participationId` (for example the 長冠軍之星 spinning for their own prize).
+ * Spins a random gift for a given person: every remaining gift unit of the event
+ * has the same chance. The person is chosen on the stage, normally the
+ * 長冠軍之星 first place, and only has to be on this event's attendance list.
  */
 export async function drawRandomGift(
   sessionId: string,
-  options: { participationId?: string | null } = {},
+  options: { participationId: string },
   actor: GiftActor = {},
 ): Promise<DrawResult> {
   assertId(sessionId, '找不到這場活動，請重新整理頁面。');
-  const rows = await loadRows(sessionId, true);
-  const settings = await settingsFor(sessionId);
   const chosenId = clean(options.participationId);
-  if (chosenId) assertId(chosenId, '找不到這位得主，請重新選擇。');
+  if (!chosenId) throw new Error('請先選擇這份禮物的得主。');
+  assertId(chosenId, '找不到這位得主，請重新選擇。');
+  const row = await prisma.participation.findFirst({ where: { id: chosenId, sessionId } });
+  if (!row) throw new Error('這位得主不在這場活動的名單裡，請重新選擇。');
+  const winner: PresentPerson = {
+    participationId: row.id,
+    name: row.displayName,
+    kind: row.kind === 'guest' ? 'guest' : 'member',
+    memberId: row.memberId,
+    represents: null,
+  };
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const gifts = await prisma.gift.findMany({
@@ -675,26 +686,18 @@ export async function drawRandomGift(
     const giftId = tickets[randomInt(tickets.length)];
 
     try {
-      const { award, gift, poolSize } = await withGiftLock(giftId, async (tx, gift) => {
+      const { award, gift } = await withGiftLock(giftId, async (tx, gift) => {
         const awarded = await tx.giftAward.count({ where: { giftId: gift.id, status: 'awarded' } });
         if (awarded >= gift.quantity) throw new GiftTakenError();
-
-        const pool = buildPool(rows, settings, await currentWinners(tx, gift.sessionId));
-        let winner: PresentPerson | undefined;
-        if (chosenId) {
-          winner = pool.present.find((person) => person.participationId === chosenId);
-          if (!winner) throw new Error('指定的得主不在已簽到名單裡，請重新選擇。');
-        } else {
-          if (pool.size === 0) throw new Error(emptyPoolMessage(pool));
-          winner = pickRandom(pool.people);
-        }
         const award = await tx.giftAward.create({
           data: {
-            ...randomAwardData(gift.id, winner, pool.size),
-            ...(chosenId ? { method: 'manual', editedBy: actor.actorName ?? null, note: '指定得主，禮物隨機抽出' } : { note: '禮物隨機抽出' }),
+            ...randomAwardData(gift.id, winner, tickets.length),
+            method: 'manual',
+            editedBy: actor.actorName ?? null,
+            note: '禮物隨機抽出',
           },
         });
-        return { award, gift, poolSize: pool.size };
+        return { award, gift };
       });
 
       await logOperation({
@@ -710,12 +713,14 @@ export async function drawRandomGift(
           giftTickets: tickets.length,
           winnerName: award.winnerName,
           winnerKind: award.winnerKind,
-          winnerChosen: Boolean(chosenId),
-          poolSize,
           seed: award.seed,
         },
       });
-      return { award: toAwardView(award), gift: { id: gift.id, sessionId: gift.sessionId, name: gift.name, quantity: gift.quantity }, poolSize };
+      return {
+        award: toAwardView(award),
+        gift: { id: gift.id, sessionId: gift.sessionId, name: gift.name, quantity: gift.quantity },
+        poolSize: tickets.length,
+      };
     } catch (error) {
       // Someone took the last unit of that gift a moment ago: spin again.
       if (error instanceof GiftTakenError) continue;
@@ -983,6 +988,30 @@ export async function listGiftLedger(options: { eventKey?: string | null; q?: st
  *   do not show the winner before the big screen finishes rolling.
  * - `sync`: see `getLotteryPool`.
  */
+/** Who can receive a spun gift, and the 長冠軍之星 first place to preselect. */
+async function stageRecipients(sessionId: string): Promise<Pick<LotteryStageData, 'candidates' | 'starWinners'>> {
+  const [rows, polls] = await Promise.all([
+    prisma.participation.findMany({ where: { sessionId }, orderBy: [{ kind: 'asc' }, { displayName: 'asc' }] }),
+    listPollsForEvent(sessionId),
+  ]);
+  const candidates = rows.map((row) => ({
+    participationId: row.id,
+    name: row.displayName,
+    kind: row.kind,
+    present: row.status === 'present' || row.status === 'late',
+  }));
+  const byMember = new Map(rows.filter((row) => row.memberId).map((row) => [row.memberId as string, row.id]));
+  const byName = new Map(rows.map((row) => [row.displayName.trim(), row.id]));
+  // Latest poll that has votes; polls are newest first.
+  const poll = polls.find((item) => item.winners.length > 0);
+  const starWinners = (poll?.winners ?? []).map((winner) => ({
+    participationId: (winner.memberId ? byMember.get(winner.memberId) : undefined) ?? byName.get(winner.label.trim()) ?? null,
+    name: winner.label,
+    votes: winner.voteCount,
+  }));
+  return { candidates, starWinners };
+}
+
 export async function getLotteryStage(
   sessionId: string,
   options: { includePoolNames?: boolean; hideNewerThanMs?: number; sync?: boolean } = {},
@@ -1025,9 +1054,6 @@ export async function getLotteryStage(
     winners,
     poolSize: pool.size,
     poolNames: options.includePoolNames ? [...new Set(pool.people.map((person) => person.name.trim()).filter(Boolean))] : [],
-    // Leaders only: who can be named as the winner of a random-gift spin.
-    presentPeople: options.includePoolNames
-      ? pool.present.map((person) => ({ participationId: person.participationId, name: person.name, kind: person.kind }))
-      : [],
+    ...(options.includePoolNames ? await stageRecipients(sessionId) : { candidates: [], starWinners: [] }),
   };
 }
