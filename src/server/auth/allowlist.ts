@@ -28,3 +28,12 @@ export function isAllowlistedLeaderEmail(email: string | null | undefined) {
     .map((domain) => domain.replace(/^@/, ''))
     .some((domain) => normalized.endsWith(`@${domain}`));
 }
+
+/**
+ * Open by default (owner's choice, 2026-10-29): any Google account can sign in
+ * and use /console. Set AUTH_GOOGLE_RESTRICTED=true to go back to the allowlist,
+ * members with a current leadership term, and the admin password.
+ */
+export function isGoogleConsoleOpen() {
+  return process.env.AUTH_GOOGLE_RESTRICTED?.trim().toLowerCase() !== 'true';
+}

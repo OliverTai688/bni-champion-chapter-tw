@@ -1,17 +1,18 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
 import Line from 'next-auth/providers/line';
-import { isAllowlistedLeaderEmail } from '@/server/auth/allowlist';
+import { isAllowlistedLeaderEmail, isGoogleConsoleOpen } from '@/server/auth/allowlist';
 import { prisma } from '@/server/db/prisma';
 import { recordGoogleLogin } from '@/server/repositories/admin-login-records-repository';
 
 const LOGIN_RECORD_TIMEOUT_MS = 2500;
 
 /**
- * Google sign-in is open to allowlisted leaders and to active members whose
- * e-mail is on file. Everyone else is refused, even when the allowlist is empty.
+ * Any Google account may sign in while the console is open (see isGoogleConsoleOpen).
+ * Restricted: allowlisted leaders and active members whose e-mail is on file only.
  */
 async function canSignIn(email: string) {
+  if (isGoogleConsoleOpen()) return true;
   if (isAllowlistedLeaderEmail(email)) return true;
   const member = await prisma.member
     .findFirst({ where: { isActive: true, email: { equals: email, mode: 'insensitive' } }, select: { id: true } })

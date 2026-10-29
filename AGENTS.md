@@ -441,7 +441,7 @@ Manual evidence:
 Status: Implemented locally; production push and deploy pending access. See `docs/05_execution-plans/PLN-006_organization-release-runbook.md` and `docs/08_acceptance-and-qa/ACC-005_release-hardening-and-ai-seating-acceptance.md`.
 
 - Legacy routes (`/seats`, `/admin`, `/w/[slug]`, `/pre-leave`) redirect into `/console`, `/e`, `/leave` (`next.config.ts`). Do not add pages back under the old paths.
-- Leader checks go through `getLeaderAccess()` / `requireLeader()`. Never check `auth()` alone: a signed-in Google or LINE user is not automatically a leader.
+- Leader checks go through `getLeaderAccess()` / `requireLeader()`. Never check `auth()` alone. Since 2026-10-29 any signed-in Google account is a leader (owner's decision) unless `AUTH_GOOGLE_RESTRICTED=true`; a LINE user is a leader only with a current leadership term.
 - Member identity: LINE binding (`MemberIdentity`), Google e-mail match, or a one-time login link. Never trust a member id from a form.
 - On MongoDB, `field: null` does not match a missing field. For optional fields filter with `OR: [{ field: null }, { field: { isSet: false } }]`, or write `null` explicitly on create.
 - AI writes go through `src/server/ai/seating-service.ts` and always create a new seat map revision plus an operation log.

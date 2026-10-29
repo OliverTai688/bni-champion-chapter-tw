@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { auth } from '@/auth';
 import { LEADERSHIP_ROLES } from '@/lib/tbx/labels';
 import { ADMIN_ACCESS_COOKIE, verifyAdminAccessToken } from '@/server/admin/admin-access';
-import { isAllowlistedLeaderEmail, normalizeEmail } from '@/server/auth/allowlist';
+import { isAllowlistedLeaderEmail, isGoogleConsoleOpen, normalizeEmail } from '@/server/auth/allowlist';
 import { prisma } from '@/server/db/prisma';
 
 export interface GoogleIdentity {
@@ -74,6 +74,8 @@ async function hasActiveLeadershipTerm(memberId: string) {
 }
 
 export const isLeaderEmail = cache(async (email: string) => {
+  // Open console: every signed-in Google account has leader access.
+  if (isGoogleConsoleOpen()) return true;
   if (isAllowlistedLeaderEmail(email)) return true;
   const member = await findMemberByEmail(email);
   return member ? hasActiveLeadershipTerm(member.id) : false;
@@ -87,7 +89,8 @@ export interface LeaderAccess {
 
 /**
  * The one leadership check for pages, Server Actions and route handlers:
- * the admin password cookie, a Google account that is allowlisted or holds a current leadership term,
+ * the admin password cookie, any Google account while the console is open (otherwise one that is
+ * allowlisted or holds a current leadership term),
  * or a LINE account bound to a member who holds a current leadership term.
  */
 export const getLeaderAccess = cache(async (): Promise<LeaderAccess | null> => {
