@@ -11,7 +11,8 @@ export const metadata: Metadata = {
 
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
   const viewer = await getViewer();
-  if (!viewer.member) redirect('/login?next=/me');
+  // A leader without a member record (e.g. any Google account while the console is open) has no seat of their own.
+  if (!viewer.member) redirect(viewer.leader ? '/console' : '/login?next=/me');
 
   return (
     <div className="tbx min-h-screen">

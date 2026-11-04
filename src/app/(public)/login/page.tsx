@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { LogIn, MessageCircle } from 'lucide-react';
 import { LINE_LOGIN_ENABLED } from '@/auth';
 import { getGoogleIdentity, getLineIdentity } from '@/server/auth/access';
+import { isGoogleConsoleOpen } from '@/server/auth/allowlist';
 import { listUnboundLineMembers } from '@/server/tbx/member-identity';
 import { getViewer } from '@/server/tbx/viewer';
 import { clearMemberAction, googleSignInAction, lineSignInAction } from './actions';
@@ -22,6 +23,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const [viewer, google, line] = await Promise.all([getViewer(), getGoogleIdentity(), getLineIdentity()]);
   // Back from LINE with a bound account: go straight on.
   if (via === 'line' && viewer.member) redirect(safeNext);
+  // Open console: a Google account that is not on the member roster still gets in, as a leader.
+  if (google && !viewer.member && viewer.leader) redirect(safeNext.startsWith('/console') ? safeNext : '/console');
   const unbound = line && !viewer.member ? await listUnboundLineMembers() : [];
   const errorText = error ? ERROR_TEXT[error] ?? '登入沒有成功，請再試一次，或請幹部傳登入連結給你。' : null;
 
@@ -84,7 +87,11 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <h2>用 Google 登入</h2>
             </div>
             <div className="tb-card-body flex flex-col gap-3">
-              <p className="text-sm text-tb-muted">使用你登記在會員名冊上的 Email 對應的 Google 帳號。</p>
+              <p className="text-sm text-tb-muted">
+                {isGoogleConsoleOpen()
+                  ? '任何 Google 帳號都可以登入。Email 登記在會員名冊上的會直接看到自己的座位，其他帳號會進入領導團隊中控。'
+                  : '使用你登記在會員名冊上的 Email 對應的 Google 帳號。'}
+              </p>
               <form action={googleSignInAction}>
                 <input type="hidden" name="next" value={safeNext} />
                 <button type="submit" className="tb-btn tb-btn-gold tb-btn-lg w-full">
