@@ -18,7 +18,7 @@ Task IDs: 1105-LAYOUT
 - 黃佳琪 sits next to her two guests (main-0-2).
 - New member 譚旭良 (10/29 guest, 企業金融) at main-3-0, the next seat on 馬廷軒's bench (一排3 → 一排4). Grid columns are benches, so main-2-1 would have put him across the table instead.
 - 陳軾 / 陳平 still directly behind mentors 王柏詠 / 蘇冠霖. Mina 陳宜均 fixed at main-2-3.
-- Proxies (last row): only the website registrations, 韓政諺 (杜文魁) and 黃嘉琪 (梁韋恩).
+- Proxies (last row): website registrations 韓政諺 (杜文魁) and 黃嘉琪 (梁韋恩); per the user also 古又帆 (proxy name not given, stored as 代理人).
 - Heroes, stored as one list: 蘇冠霖 → 馬廷軒 → 林育群 → 邱柏瀚 → 黃杰 → 林子晏 (two chains: 冠霖→廷軒→育群, 柏瀚→黃杰→子晏).
 - Grid 9 rows x 4 = 36 seats, no empty seats; all 39 members placed once.
 - Guest relationship index and join intent are not stored.
@@ -36,9 +36,10 @@ Task IDs: 1105-LAYOUT
 ## 4. Production Writes (requested by the user 2026-11-04)
 
 - Member 譚旭良: `category` member, `roles` [會員], `industry` 企業金融; 11/05 member participation created; logged `member_updated`. Mentor not set.
-- `seed-current-layout.mjs --write`: seat map v2 (v1 from the first layout draft replaced), 41 seats. Session title now "115/11/05 座位表".
+- `seed-current-layout.mjs --write`: seat map v3 (v1 first draft, v2 before 古又帆 became 代理), 41 seats. Session title now "115/11/05 座位表".
 - Guest participations for 葉瑋庭 and 蔡嘉哲 (note 賓N, industry, host, invitedBy 黃佳琪).
-- `grid-to-floor-plan.mjs --week=2026-11-05 --write`: 41 seated, 0 unmatched; duties 林子晏 值日, 吳振綱 音控, 郭子郁 攝影.
+- 古又帆 participation set to `substitute` (substituteName 代理人), mirrored to `attendanceOverrides`, logged `intent_substitute`.
+- `grid-to-floor-plan.mjs --week=2026-11-05 --write --replace`: 41 seated, 0 unmatched; duties 林子晏 值日, 吳振綱 音控, 郭子郁 攝影.
 - Gifts: the 41 undrawn gifts of 10/29 copied to 11/05 (same name, donor, note, order); 外泌體面膜 (drawn 10/29 by 林家均) left out. Each logged `gift_created` with `copiedFromGiftId`.
 - Publish: slug `2026-11-05-444a68`, `publicStatus` published, logged `public_event_publish`.
 - Production check (HTTP): `/e/2026-11-05-444a68`, `/e/2026-11-05`, `/`, `/login`, `/console` return 200; the event page contains guests, 譚旭良, duties, 代理 and proxy names.
@@ -49,6 +50,6 @@ Task IDs: 1105-LAYOUT
 
 ## 6. Open Points
 
-- 古又帆 is seated as a member (no leave/proxy registration for 11/05) although 黃子宜 is acting chair.
+- 古又帆's proxy name is still the placeholder 代理人; fill it in on the console attendance page when known.
 - Gift list still carries 晶礦擺件x1 (drawn 10/22 by 邱柏瀚 from the 10/22 list), 晶礦手串 (note 9/3抽) and two 開運沐浴乳 (note 9/17抽), exactly as on 10/29.
 - Not committed or pushed; the public page reads from the database, so no deploy is needed.
