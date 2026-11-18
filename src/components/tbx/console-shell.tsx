@@ -70,7 +70,18 @@ export function ConsoleRail({ leaderName }: { leaderName: string | null }) {
 }
 
 /** Shown instead of the console when the visitor has no leadership access. */
-export function ConsoleGate({ googleEmail, lineName, lineEnabled }: { googleEmail?: string | null; lineName?: string | null; lineEnabled?: boolean }) {
+export function ConsoleGate({
+  googleEmail,
+  lineName,
+  lineEnabled,
+  inLine,
+}: {
+  googleEmail?: string | null;
+  lineName?: string | null;
+  lineEnabled?: boolean;
+  /** Opened inside LINE: Google sign-in is refused there, so leaders use the password. */
+  inLine?: boolean;
+}) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -132,9 +143,13 @@ export function ConsoleGate({ googleEmail, lineName, lineEnabled }: { googleEmai
             用 LINE 登入
           </button>
         ) : null}
-        <button type="button" className="tb-btn" onClick={() => signIn('google')}>
-          用 Google 登入
-        </button>
+        {inLine ? (
+          <p className="text-xs text-tb-muted">在 LINE 裡請用後台密碼進入。要用 Google 帳號，請點右上角選單，選「用預設瀏覽器開啟」。</p>
+        ) : (
+          <button type="button" className="tb-btn" onClick={() => signIn('google')}>
+            用 Google 登入
+          </button>
+        )}
       </form>
       <a href="/me" className="text-center text-sm text-tb-muted">
         我是一般會員，前往會員區

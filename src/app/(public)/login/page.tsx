@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { LogIn, MessageCircle } from 'lucide-react';
 import { LINE_LOGIN_ENABLED } from '@/auth';
 import { getGoogleIdentity, getLineIdentity } from '@/server/auth/access';
+import { isLineInAppBrowser } from '@/lib/line-client';
 import { isGoogleConsoleOpen } from '@/server/auth/allowlist';
 import { listUnboundLineMembers } from '@/server/tbx/member-identity';
 import { getViewer } from '@/server/tbx/viewer';
@@ -20,9 +22,12 @@ const ERROR_TEXT: Record<string, string> = {
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; via?: string }> }) {
   const { next, error, via } = await searchParams;
   const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/me';
-  const [viewer, google, line] = await Promise.all([getViewer(), getGoogleIdentity(), getLineIdentity()]);
+  const [viewer, google, line, headerStore] = await Promise.all([getViewer(), getGoogleIdentity(), getLineIdentity(), headers()]);
+  // Google refuses to sign in inside LINE's browser, so only LINE and login links are offered there.
+  const inLine = isLineInAppBrowser(headerStore.get('user-agent'));
   // Back from LINE with a bound account: go straight on.
-  if (via === 'line' && viewer.member) redirect(safeNext);
+  // Inside LINE the LIFF login lands back here after a refresh: same thing.
+  if ((via === 'line' || (inLine && line)) && viewer.member) redirect(safeNext);
   // Open console: a Google account that is not on the member roster still gets in, as a leader.
   if (google && !viewer.member && viewer.leader) redirect(safeNext.startsWith('/console') ? safeNext : '/console');
   const unbound = line && !viewer.member ? await listUnboundLineMembers() : [];
@@ -82,6 +87,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <p className="mt-2 text-xs text-tb-faint">第一次登入時選擇你的姓名完成綁定，之後就會自動登入。</p>
             </form>
           ) : null}
+          {inLine ? (
+            <p className="text-sm text-tb-muted">在 LINE 裡無法使用 Google 登入。要用 Google 帳號，請點右上角選單，選「用預設瀏覽器開啟」。</p>
+          ) : (
           <section className="tb-card">
             <div className="tb-card-head">
               <h2>用 Google 登入</h2>
@@ -106,6 +114,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               ) : null}
             </div>
           </section>
+          )}
 
           <section className="tb-card">
             <div className="tb-card-head">

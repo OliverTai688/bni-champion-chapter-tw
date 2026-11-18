@@ -84,3 +84,11 @@ Keep filenames lowercase after the prefix and use hyphens.
 
 - `docs/05_execution-plans/PLN-006_organization-release-runbook.md` - environment variables, release steps, rollback.
 - `docs/08_acceptance-and-qa/ACC-005_release-hardening-and-ai-seating-acceptance.md` - security, LINE login, legacy migration, AI seating API evidence.
+
+## LINE AI Assistant And LIFF Set (2026-11-18)
+
+- `docs/01_product-requirements/PRD-003_line-official-account-ai-assistant-and-liff.md` - 長冠軍同行者, LINE official account, group behaviour, LIFF login.
+- `docs/02_architecture-and-rules/ARC-008_line-official-account-ai-assistant-and-liff-architecture.md` - webhook, LIFF auth, agent core, tool tiers, data models.
+- `docs/05_execution-plans/PLN-007_line-official-account-ai-assistant-and-liff-batch-plan.md` - batches LINE-001 to LINE-009.
+- `docs/08_acceptance-and-qa/ACC-006_line-official-account-ai-assistant-and-liff-acceptance.md` - acceptance checklist.
+- `docs/01_product-requirements/PRD-004_a-qi-character-and-persona.md` - 阿麒 A-Qi character, persona, voice and visual rules (v1.0).

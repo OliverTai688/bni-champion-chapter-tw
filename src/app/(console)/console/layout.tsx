@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { ConsoleGate, ConsoleRail } from '@/components/tbx/console-shell';
 import { LINE_LOGIN_ENABLED } from '@/auth';
+import { isLineInAppBrowser } from '@/lib/line-client';
 import { getGoogleIdentity, getLineIdentity } from '@/server/auth/access';
 import { getViewer } from '@/server/tbx/viewer';
 
@@ -20,6 +22,7 @@ export default async function ConsoleLayout({ children }: { children: React.Reac
           googleEmail={(await getGoogleIdentity())?.email ?? null}
           lineName={(await getLineIdentity())?.name ?? null}
           lineEnabled={LINE_LOGIN_ENABLED}
+          inLine={isLineInAppBrowser((await headers()).get('user-agent'))}
         />
       </div>
     );
