@@ -75,16 +75,21 @@ Status: Implemented locally（2026-11-19，branch `feat/line-check-in-service`�
 
 ## LINE-004：Webhook 與快速指令
 
-Status: Not started
+Status: Implemented locally（2026-11-19，branch `feat/line-webhook`，接在 LINE-003 之後）；還沒接上 LINE 實測
 
-- [ ] Prisma：`LineChat`、`LineWebhookReceipt`。
-- [ ] `src/app/api/line/webhook/route.ts`：驗簽、去重、事件分派（ARC-008 §5）。
-- [ ] `src/server/line/*`：Messaging API client（reply、push、取得內容、quota），只在伺服器用。
-- [ ] 一對一：`簽到`、`座位`、`座位表`、`抽獎`、`投票`、`說明`（PRD-003 R3）。
-- [ ] 群組：加入時自我介紹一次；被 @ 才回應；「簽到」每場活動每個群組提醒一次。
-- [ ] `follow` 歡迎訊息。
-
-驗收：ACC-006 §2、§3。
+- [x] Prisma：`LineChat`、`LineWebhookReceipt`（只新增，不改舊資料）。
+- [x] `src/app/api/line/webhook/route.ts`：驗簽（不符回 401）、沒設環境變數回 503、逐一處理事件，一個事件失敗不影響其他事件，簽章正確一律回 200。
+- [x] `src/server/line/messaging.ts`：驗簽、reply、push。token 和 secret 只在這裡讀，錯誤只記狀態碼。
+- [x] `src/server/line/events.ts`：用 `webhookEventId` 去重；一對一指令「簽到／報到」「座位／座位表」「抽獎」「投票／長冠軍之星」「說明」；其他文字先回說明（LINE-007 再交給 AI）。簽到用 `checkInMemberForToday({ method: 'line_chat' })`，沒綁定就回 LIFF 綁定連結。
+- [x] 群組：加入時自我介紹一次；平常不說話；被 @ 才回一句；「簽到」只在例會當天、每個群組每場提醒一次（`LineChat.checkInHintKey`）。
+- [x] `follow` 歡迎訊息（沒綁定時附綁定連結）、`unfollow`／`leave` 記錄時間、加入或離開群組寫操作紀錄。
+- [x] 驗證：eslint、型別檢查通過；驗簽用真的模組測過（正確簽章通過，改過的內容、錯的 secret、空的、亂碼都拒絕）。
+- [ ] 上線前，擁有者要做：
+  - 重新發行 Messaging API 的 Channel secret，再把新的 secret 和 Channel access token（長期）設到 Vercel 的 `LINE_MESSAGING_CHANNEL_SECRET`、`LINE_MESSAGING_ACCESS_TOKEN`。
+  - 部署後在正式資料庫跑 `pnpm run prisma:push`，建立 `LineChat.lineId`、`LineWebhookReceipt.webhookEventId` 的唯一索引。沒有索引時去重不會生效。
+  - LINE Developers › Messaging API：Webhook URL 填 `https://bni-champion-chapter-tw.yzedtech.com/api/line/webhook`，按 Verify，開啟 Use webhook。
+  - 官方帳號後台：關閉自動回應訊息，改成「接受邀請加入群組或多人聊天室」。
+- [ ] 實測：ACC-006 §2、§3（手機一對一傳「簽到」等指令，把阿麒加進測試群組）。
 
 ## LINE-005：圖文選單與分享到群組
 

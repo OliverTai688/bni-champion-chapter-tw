@@ -619,3 +619,33 @@ model MemberIdentity {
   @@unique([provider, memberId])
   @@index([memberId])
 }
+
+// ---------------------------------------------------------------------------
+// LINE official account 阿麒 (PLN-007 LINE-004). All models below are additive.
+// ---------------------------------------------------------------------------
+
+// A chat the official account takes part in: a 1:1 friend, a group or a multi-person room.
+model LineChat {
+  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  kind           String // user | group | room
+  lineId         String    @unique // userId / groupId / roomId
+  name           String?
+  // Group message archive (PRD-003 R6), off until a leader turns it on.
+  archiveEnabled Boolean   @default(false)
+  // Event key of the last check-in hint posted in this group: one hint per event per group.
+  checkInHintKey String?
+  joinedAt       DateTime  @default(now())
+  leftAt         DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@index([kind])
+}
+
+// Webhook events already handled, so a redelivered event is not processed twice.
+model LineWebhookReceipt {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  webhookEventId String   @unique
+  receivedAt     DateTime @default(now())
+
+  @@index([receivedAt])
+}

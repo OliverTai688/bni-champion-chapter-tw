@@ -91,6 +91,22 @@ export async function checkInMemberForToday(input: { memberId: string; method: S
   return selfCheckIn({ event, row, method: input.method });
 }
 
+/** The member's seat at today's or the next published event, for "where do I sit". */
+export async function getMemberSeat(memberId: string) {
+  const event = await getFocusEvent({ publicOnly: true });
+  if (!event) return null;
+  const row = await prisma.participation.findUnique({
+    where: { sessionId_key: { sessionId: event.id, key: `m:${memberId}` } },
+    select: { id: true },
+  });
+  return {
+    eventKey: event.weekId,
+    date: event.date,
+    isToday: isEventToday(event),
+    seatLabel: row ? await seatLabel(event.id, row.id) : null,
+  };
+}
+
 /** The one wording of a check-in result, for the web page and LINE replies alike. */
 export function describeCheckIn(result: SelfCheckInResult) {
   const seat = 'seatLabel' in result && result.seatLabel ? `你的座位：${result.seatLabel}。` : '';
