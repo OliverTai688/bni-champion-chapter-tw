@@ -75,7 +75,7 @@ Status: Implemented locally（2026-11-19，branch `feat/line-check-in-service`�
 
 ## LINE-004：Webhook 與快速指令
 
-Status: Implemented locally（2026-11-19，branch `feat/line-webhook`，接在 LINE-003 之後）；還沒接上 LINE 實測
+Status: Deployed（2026-11-19，`main` commit `c350729`）；一對一指令已用手機實測正常。網頁簽到頁暫時維持舊程式（例會日），之後再改用共用服務
 
 - [x] Prisma：`LineChat`、`LineWebhookReceipt`（只新增，不改舊資料）。
 - [x] `src/app/api/line/webhook/route.ts`：驗簽（不符回 401）、沒設環境變數回 503、逐一處理事件，一個事件失敗不影響其他事件，簽章正確一律回 200。
@@ -93,9 +93,12 @@ Status: Implemented locally（2026-11-19，branch `feat/line-webhook`，接在 L
 
 ## LINE-005：圖文選單與分享到群組
 
-Status: Not started
+Status: 圖文選單已上線（2026-11-19）；分享到群組還沒做
 
-- [ ] `scripts/line-rich-menu.ts` 加上 `public/line/rich-menu.png`，六格連到 `/today/*` 和 `/me`。
+- [x] 圖文選單「阿麒主選單」：在官方帳號後台建立（2×2 大版型，2500×1686），四格都送出文字，交給 webhook 的快速指令處理：簽到、座位、投票、說明。期間 2026/11/19 到 2030/12/31，預設展開，選單列文字「選單」。
+  - 圖和原始檔：`docs/01_product-requirements/assets/line-rich-menu/a-qi-rich-menu-v1.jpg`、`.html`（用 Chrome headless 輸出 2500×1686 後轉 JPEG）。
+  - 用後台建立而不是 API 腳本，是因為 API 需要 access token，而 token 不能經過 AI 助理；以後要改成 API 管理時再寫 `scripts/line-rich-menu.ts`。
+  - 官方帳號後台另外關閉了「自動回應訊息」和內建的「加入好友的歡迎訊息」，避免跟阿麒的回覆重複（2026-11-19）。
 - [ ] 活動頁在 LINE 裡顯示「分享到群組」（shareTargetPicker），分享 Flex 卡片：座位表、抽獎。
 
 驗收：ACC-006 §4。
