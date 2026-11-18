@@ -31,6 +31,7 @@ Related: ACC-004、ACC-005、ARC-006 §3
 | `ADMIN_PASSWORD` | 建議 | 幹部共用密碼。請設一組新的，舊的寫死密碼已失效 |
 | `AUTH_ALLOWED_EMAILS` | 建議 | 一定要能進後台的 Google 帳號（逗號分隔） |
 | `AUTH_LINE_ID`、`AUTH_LINE_SECRET` | 要用 LINE 登入時 | LINE Developers 建立 LINE Login channel；Callback URL：`https://<網域>/api/auth/callback/line` |
+| `NEXT_PUBLIC_LIFF_ID` | 要在 LINE 裡自動登入時 | LIFF app id（PLN-007）。建置時寫進前端，改了要重新部署。沒設時網站照常運作，只是在 LINE 裡不會自動登入 |
 
 ## 3. 上線步驟
 
