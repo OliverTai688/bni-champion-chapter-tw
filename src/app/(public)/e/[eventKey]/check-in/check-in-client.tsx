@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { ActionForm, SubmitButton } from '@/components/tbx/client';
 import { guestCheckInAction, selfCheckInAction, substituteCheckInAction } from './actions';
@@ -13,6 +14,15 @@ export interface CheckInPerson {
 }
 
 type Mode = 'member' | 'substitute' | 'guest';
+
+/** Long enough to read the confirmation and seat hint before the seat map opens. */
+const SEAT_MAP_DELAY_MS = 1200;
+
+/** The day's seat map, with `name` highlighted when given. */
+export function seatMapHref(eventKey: string, name?: string | null) {
+  const query = name ? `?q=${encodeURIComponent(name)}` : '';
+  return `/e/${encodeURIComponent(eventKey)}${query}#seats`;
+}
 
 const MODES: Array<{ key: Mode; label: string }> = [
   { key: 'member', label: '我是會員' },
@@ -78,6 +88,14 @@ export function CheckInClient({
   }, [members, query]);
   const waitingGuests = guests.filter((guest) => guest.state === 'expected');
   const selectedPerson = [...members, ...guests].find((person) => person.id === selected) ?? null;
+  const router = useRouter();
+
+  // After a successful check-in, open the day's seat map with the person's seat highlighted.
+  function openSeatMap(name?: string | null) {
+    const href = seatMapHref(eventKey, name);
+    router.prefetch(href);
+    window.setTimeout(() => router.push(href), SEAT_MAP_DELAY_MS);
+  }
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -117,7 +135,7 @@ export function CheckInClient({
       ) : null}
 
       {mode === 'member' ? (
-        <ActionForm action={selfCheckInAction} className="flex flex-col gap-4">
+        <ActionForm action={selfCheckInAction} className="flex flex-col gap-4" onSuccess={() => openSeatMap(selectedPerson?.name)}>
           <input type="hidden" name="eventKey" value={eventKey} />
           <input type="hidden" name="participationId" value={selected ?? ''} />
           <NameGrid
@@ -135,7 +153,7 @@ export function CheckInClient({
       ) : null}
 
       {mode === 'substitute' ? (
-        <ActionForm action={substituteCheckInAction} className="flex flex-col gap-4">
+        <ActionForm action={substituteCheckInAction} className="flex flex-col gap-4" onSuccess={() => openSeatMap(selectedPerson?.name)}>
           <input type="hidden" name="eventKey" value={eventKey} />
           <input type="hidden" name="participationId" value={selected ?? ''} />
           <NameGrid
@@ -171,7 +189,7 @@ export function CheckInClient({
       {mode === 'guest' ? (
         <div className="flex flex-col gap-5">
           {waitingGuests.length > 0 ? (
-            <ActionForm action={selfCheckInAction} className="flex flex-col gap-3">
+            <ActionForm action={selfCheckInAction} className="flex flex-col gap-3" onSuccess={() => openSeatMap(selectedPerson?.name)}>
               <input type="hidden" name="eventKey" value={eventKey} />
               <input type="hidden" name="participationId" value={selected ?? ''} />
               <p className="tb-label">已登記的來賓，點你的姓名</p>
@@ -182,7 +200,7 @@ export function CheckInClient({
             </ActionForm>
           ) : null}
 
-          <ActionForm action={guestCheckInAction} className="tb-card flex flex-col gap-3 p-4" resetOnSuccess>
+          <ActionForm action={guestCheckInAction} className="tb-card flex flex-col gap-3 p-4" resetOnSuccess onSuccess={() => openSeatMap()}>
             <input type="hidden" name="eventKey" value={eventKey} />
             <p className="font-bold">{waitingGuests.length > 0 ? '名單上沒有我' : '來賓登記'}</p>
             <label className="tb-label" htmlFor="guest-name">
