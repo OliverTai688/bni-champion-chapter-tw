@@ -3,9 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { prisma } from '@/server/db/prisma';
 import { fail, isObjectId, ok, optionalText, text, type ActionState } from '@/server/tbx/action';
-import { getPublicEventByKey, isEventToday, isPastStartTime } from '@/server/tbx/events';
+import { describeCheckIn, selfCheckIn } from '@/server/tbx/check-in-service';
+import { getPublicEventByKey, isEventToday } from '@/server/tbx/events';
 import { logOperation } from '@/server/tbx/log';
-import { addGuest, checkIn, checkInSubstitute } from '@/server/tbx/participation';
+import { addGuest, checkInSubstitute } from '@/server/tbx/participation';
 import { getSeatPlanView } from '@/server/tbx/seat-plan';
 import { isLeader } from '@/server/tbx/viewer';
 
@@ -35,23 +36,10 @@ export async function selfCheckInAction(_prev: ActionState, formData: FormData):
     if (!isObjectId(id)) throw new Error('請先選擇你的姓名。');
     const [event, row] = await Promise.all([loadEvent(formData), prisma.participation.findUnique({ where: { id } })]);
     if (!row || row.sessionId !== event.id) throw new Error('找不到這筆名單，請重新選擇。');
-    // The seat does not depend on the check-in, so look it up while the check-in is written.
-    const hint = seatHint(event.id, row.id);
-    if (row.status === 'present' || row.status === 'late') return ok(`${row.displayName} 已經簽到過了。${await hint}`);
-    if (row.status !== 'expected') throw new Error('這位會員已登記請假或代理。本人到場請找幹部更改。');
-
-    const late = row.kind === 'member' && isPastStartTime(event);
-    await checkIn({ participationId: row.id, method: 'self', late });
-    await logOperation({
-      sessionId: event.id,
-      actorRole: row.kind === 'member' ? 'member' : 'system',
-      actorName: row.displayName,
-      action: late ? 'self_check_in_late' : 'self_check_in',
-      targetType: 'Participation',
-      targetId: row.id,
-    });
-    done(event.weekId);
-    return ok(`${row.displayName} 簽到完成${late ? '（遲到）' : ''}。${await hint}`);
+    const result = await selfCheckIn({ event, row, method: 'self' });
+    // On leave or by proxy: shown as an error, as before.
+    if (result.status === 'unavailable') throw new Error(describeCheckIn(result));
+    return ok(describeCheckIn(result));
   } catch (error) {
     return fail(error);
   }

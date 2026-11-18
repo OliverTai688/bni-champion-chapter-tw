@@ -52,23 +52,24 @@ Status: In progress（MANUAL_REQUIRED，需要擁有者）
 
 ## LINE-002：LIFF 自動登入
 
-Status: Implemented locally（2026-11-18）；LINE 裡的實機驗證要等正式環境設好環境變數
+Status: Deployed（2026-11-19，`main` commit `2fadf5c`）；手機在 LINE 裡的實測還沒做
 
 - [x] 加入 `@line/liff` 2.32，`src/components/liff-boot.tsx` 放在 `AppProviders`，只在 LINE 內建瀏覽器而且有設 `NEXT_PUBLIC_LIFF_ID` 時，才動態載入 SDK。每個分頁只自動登入一次，失敗不會一直重試。
 - [x] `src/auth.ts` 新增 Credentials provider `liff`：`src/server/auth/liff.ts` 用 LINE 的 verify API 驗證 ID token（`client_id` = `AUTH_LINE_ID`，同時檢查 `aud`），token 不存、不寫 log。`jwt` callback 把 `liff` 正規化成 `line`，所以綁定、`/me`、`getLeaderAccess()` 都沿用 LINE Login 的流程。
 - [x] 在 LINE 裡（用 user agent 判斷，`src/lib/line-client.ts`）隱藏 Google 登入：`/login` 改顯示「用預設瀏覽器開啟」的說明，`/console` 閘門提示用後台密碼。已綁定的 LINE 使用者在 LINE 裡打開 `/login` 會直接前往 `next`。
-- [x] `/today`、`/today/check-in`、`/today/lottery`、`/today/vote`（`src/app/(public)/today/[[...section]]/page.tsx`）：用 `getFocusEvent({ publicOnly: true })` 轉到今天或下一場已發布的活動；都沒有時顯示空狀態。轉址還沒實測（2026-11-18 本機 Docker 資料庫沒開，擁有者決定先跳過）；不合法的路徑已確認回 404。
+- [x] `/today`、`/today/check-in`、`/today/lottery`、`/today/vote`（`src/app/(public)/today/[[...section]]/page.tsx`）：用 `getFocusEvent({ publicOnly: true })` 轉到今天或下一場已發布的活動；都沒有時顯示空狀態。正式環境已確認 `/today` → `/e/2026-11-19`、`/today/check-in` → `/e/2026-11-19/check-in`，不合法的路徑回 404（2026-11-19）。
 - [x] PLN-006 和 `.env.example` 補上 `NEXT_PUBLIC_LIFF_ID`。
 
 驗收：ACC-006 §1。
 
 ## LINE-003：簽到服務抽出來
 
-Status: Not started
+Status: Implemented locally（2026-11-19，branch `feat/line-check-in-service`）；沒有資料庫可以實測
 
-- [ ] 新增 `src/server/tbx/check-in-service.ts`（ARC-008 §6）。
-- [ ] `selfCheckInAction` 改用它，網頁行為不變。
-- [ ] `OperationLog` 記錄 `method`。
+- [x] 新增 `src/server/tbx/check-in-service.ts`：`selfCheckIn()` 處理一筆名單的簽到（已簽到、請假或代理、遲到、寫入、操作紀錄、重新整理頁面快取），`checkInMemberForToday()` 用會員 id 找今天已發布的活動和名單（給 LINE 聊天用），`describeCheckIn()` 是統一的回覆文字。
+- [x] `/e/[eventKey]/check-in` 的 `selfCheckInAction` 和 `/me` 的 `memberCheckInAction` 都改用 `selfCheckIn()`，各自的文字和行為不變。
+- [x] `OperationLog` 的 `metadata.method` 記錄簽到方式：網頁維持 `self`，之後 LINE 聊天用 `line_chat`。
+- [ ] 實測：網頁自助簽到、`/me` 簽到、遲到、已簽到、請假（ACC-006 2.1–2.3、2.9）。要本機資料庫或正式環境。
 
 驗收：ACC-006 §2 的網頁回歸項目。
 
