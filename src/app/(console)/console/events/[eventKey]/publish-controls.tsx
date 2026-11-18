@@ -9,9 +9,9 @@ export function PublishControls({ eventKey, published }: { eventKey: string; pub
       <input type="hidden" name="eventKey" value={eventKey} />
       <input type="hidden" name="publish" value={published ? '0' : '1'} />
       {published ? (
-        <button type="submit" className="tb-btn tb-btn-sm">
+        <SubmitButton plain className="tb-btn-sm" pendingText="取消中…">
           取消發布
-        </button>
+        </SubmitButton>
       ) : (
         <SubmitButton pendingText="發布中…">發布活動</SubmitButton>
       )}

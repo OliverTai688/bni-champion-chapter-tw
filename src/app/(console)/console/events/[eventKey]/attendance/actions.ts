@@ -21,13 +21,23 @@ import { requireLeader } from '@/server/tbx/viewer';
 const STATUSES: ParticipationStatus[] = ['expected', 'present', 'late', 'absent', 'medical', 'substitute'];
 
 async function loadRow(formData: FormData) {
-  const event = await getEventByKey(text(formData, 'eventKey'));
-  if (!event) throw new Error('找不到這場活動。');
   const id = text(formData, 'participationId');
   if (!isObjectId(id)) throw new Error('出席紀錄編號不正確。');
-  const row = await prisma.participation.findUnique({ where: { id } });
+  const [event, row] = await Promise.all([
+    getEventByKey(text(formData, 'eventKey')),
+    prisma.participation.findUnique({ where: { id } }),
+  ]);
+  if (!event) throw new Error('找不到這場活動。');
   if (!row || row.sessionId !== event.id) throw new Error('這筆出席紀錄不屬於這場活動。');
   return { event, row };
+}
+
+/** Checks leadership and loads the row at the same time; the leader check still decides first. */
+async function leaderAndRow(formData: FormData) {
+  const [viewer, loaded] = await Promise.allSettled([requireLeader(), loadRow(formData)]);
+  if (viewer.status === 'rejected') throw viewer.reason;
+  if (loaded.status === 'rejected') throw loaded.reason;
+  return { viewer: viewer.value, ...loaded.value };
 }
 
 function refresh(weekId: string) {
@@ -43,8 +53,7 @@ function memberIdOrNull(formData: FormData, key: string) {
 /** One-click row buttons: 簽到 / 遲到 / 代理人到 / 取消. */
 export async function quickAttendanceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const viewer = await requireLeader();
-    const { event, row } = await loadRow(formData);
+    const { viewer, event, row } = await leaderAndRow(formData);
     const intent = text(formData, 'intent');
 
     if (intent === 'present') await checkIn({ participationId: row.id, method: 'staff' });
@@ -71,8 +80,7 @@ export async function quickAttendanceAction(_prev: ActionState, formData: FormDa
 
 export async function updateParticipationAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const viewer = await requireLeader();
-    const { event, row } = await loadRow(formData);
+    const { viewer, event, row } = await leaderAndRow(formData);
     const status = text(formData, 'status') as ParticipationStatus;
     if (!STATUSES.includes(status)) throw new Error('出席狀態不正確。');
 
@@ -135,8 +143,7 @@ export async function addGuestAction(_prev: ActionState, formData: FormData): Pr
 
 export async function updateGuestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const viewer = await requireLeader();
-    const { event, row } = await loadRow(formData);
+    const { viewer, event, row } = await leaderAndRow(formData);
     await updateGuest({
       participationId: row.id,
       displayName: text(formData, 'displayName'),
@@ -163,8 +170,7 @@ export async function updateGuestAction(_prev: ActionState, formData: FormData):
 
 export async function removeGuestAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const viewer = await requireLeader();
-    const { event, row } = await loadRow(formData);
+    const { viewer, event, row } = await leaderAndRow(formData);
     await removeGuest(row.id);
     await logOperation({
       sessionId: event.id,

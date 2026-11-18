@@ -2,6 +2,7 @@ import 'server-only';
 
 import { timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { findMemberByEmail, findMemberByLine, getGoogleIdentity, getLeaderAccess, getLineIdentity } from '@/server/auth/access';
 import { sign as signValue } from '@/server/auth/secrets';
 import { prisma } from '@/server/db/prisma';
@@ -52,11 +53,11 @@ async function resolveMemberId() {
   return (await findMemberByEmail(google.email))?.id ?? null;
 }
 
-export async function getViewer(): Promise<Viewer> {
-  const access = await getLeaderAccess();
+/** Memoised per request: layouts and pages of one route all ask for the viewer. */
+export const getViewer = cache(async (): Promise<Viewer> => {
+  const [access, memberId] = await Promise.all([getLeaderAccess(), resolveMemberId()]);
   const leader = Boolean(access);
 
-  const memberId = await resolveMemberId();
   let member: Viewer['member'] = null;
   let activeRoles: string[] = [];
 
@@ -90,7 +91,7 @@ export async function getViewer(): Promise<Viewer> {
     member,
     activeRoles,
   };
-}
+});
 
 /** Use inside every leadership Server Action and route handler. */
 export async function requireLeader() {

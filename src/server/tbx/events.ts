@@ -1,17 +1,18 @@
 import 'server-only';
 
+import { cache } from 'react';
 import { prisma } from '@/server/db/prisma';
 import { taipeiDateKey } from '@/lib/tbx/labels';
 
 export const PUBLIC_EVENT_STATUSES = ['published', 'live', 'completed', 'archived'] as const;
 
-/** An event key is the session's weekId (dates for weekly meetings) or its public slug. */
-export async function getEventByKey(eventKey: string) {
+/** An event key is the session's weekId (dates for weekly meetings) or its public slug. Memoised per request (layout and page both load it). */
+export const getEventByKey = cache(async (eventKey: string) => {
   const key = decodeURIComponent(eventKey);
   const byWeekId = await prisma.meetingSession.findUnique({ where: { weekId: key } });
   if (byWeekId) return byWeekId;
   return prisma.meetingSession.findFirst({ where: { publicSlug: key } });
-}
+});
 
 /** Public pages only resolve events a leader has published. */
 export async function getPublicEventByKey(eventKey: string) {

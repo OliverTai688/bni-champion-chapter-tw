@@ -31,12 +31,13 @@ function done(weekId: string) {
 /** A member, or a guest a leader registered in advance, taps their own name. */
 export async function selfCheckInAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const event = await loadEvent(formData);
     const id = text(formData, 'participationId');
     if (!isObjectId(id)) throw new Error('請先選擇你的姓名。');
-    const row = await prisma.participation.findUnique({ where: { id } });
+    const [event, row] = await Promise.all([loadEvent(formData), prisma.participation.findUnique({ where: { id } })]);
     if (!row || row.sessionId !== event.id) throw new Error('找不到這筆名單，請重新選擇。');
-    if (row.status === 'present' || row.status === 'late') return ok(`${row.displayName} 已經簽到過了。${await seatHint(event.id, row.id)}`);
+    // The seat does not depend on the check-in, so look it up while the check-in is written.
+    const hint = seatHint(event.id, row.id);
+    if (row.status === 'present' || row.status === 'late') return ok(`${row.displayName} 已經簽到過了。${await hint}`);
     if (row.status !== 'expected') throw new Error('這位會員已登記請假或代理。本人到場請找幹部更改。');
 
     const late = row.kind === 'member' && isPastStartTime(event);
@@ -50,7 +51,7 @@ export async function selfCheckInAction(_prev: ActionState, formData: FormData):
       targetId: row.id,
     });
     done(event.weekId);
-    return ok(`${row.displayName} 簽到完成${late ? '（遲到）' : ''}。${await seatHint(event.id, row.id)}`);
+    return ok(`${row.displayName} 簽到完成${late ? '（遲到）' : ''}。${await hint}`);
   } catch (error) {
     return fail(error);
   }
@@ -59,16 +60,16 @@ export async function selfCheckInAction(_prev: ActionState, formData: FormData):
 /** A substitute arrives and says which member they stand in for. */
 export async function substituteCheckInAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   try {
-    const event = await loadEvent(formData);
     const id = text(formData, 'participationId');
     if (!isObjectId(id)) throw new Error('請選擇你代理的會員。');
-    const row = await prisma.participation.findUnique({ where: { id } });
+    const [event, row] = await Promise.all([loadEvent(formData), prisma.participation.findUnique({ where: { id } })]);
     if (!row || row.sessionId !== event.id || row.kind !== 'member') throw new Error('找不到這位會員，請重新選擇。');
     if (row.status === 'present' || row.status === 'late') throw new Error(`${row.displayName} 本人已經簽到，不需要代理。`);
     if (row.status === 'substitute' && row.substituteArrivedAt) return ok(`代理 ${row.displayName} 已經簽到過了。`);
 
     const name = optionalText(formData, 'substituteName') ?? row.substituteName;
     if (!name) throw new Error('請填寫你的姓名。');
+    const hint = seatHint(event.id, row.id);
     await checkInSubstitute({ participationId: row.id, substituteName: name, method: 'self' });
     await logOperation({
       sessionId: event.id,
@@ -80,7 +81,7 @@ export async function substituteCheckInAction(_prev: ActionState, formData: Form
       metadata: { represents: row.displayName },
     });
     done(event.weekId);
-    return ok(`${name} 簽到完成，代理 ${row.displayName}。${await seatHint(event.id, row.id)}`);
+    return ok(`${name} 簽到完成，代理 ${row.displayName}。${await hint}`);
   } catch (error) {
     return fail(error);
   }

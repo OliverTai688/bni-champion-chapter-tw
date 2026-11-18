@@ -3,7 +3,7 @@ import 'server-only';
 import type { Participation } from '@prisma/client';
 import { prisma } from '@/server/db/prisma';
 import type { ParticipationStatusKey } from '@/lib/tbx/labels';
-import { findLatestSeatMapByWeekId } from '@/server/repositories/seating-workspace-repository';
+import { findLatestSeatsBySessionId } from '@/server/repositories/seating-workspace-repository';
 
 export type GridSeatTag = 'host_team' | 'sound' | 'duty' | 'guest' | 'host' | 'member' | 'proxy' | 'empty';
 
@@ -49,10 +49,12 @@ function readMeta(value: unknown): Record<string, unknown> {
  * returned, so the result is safe for public pages.
  */
 export async function getGridSeatView(weekId: string, sessionId: string): Promise<GridSeatView | null> {
-  const seatMap = await findLatestSeatMapByWeekId(weekId).catch(() => null);
+  const [seatMap, rows] = await Promise.all([
+    findLatestSeatsBySessionId(sessionId).catch(() => null),
+    prisma.participation.findMany({ where: { sessionId } }) as Promise<Participation[]>,
+  ]);
   if (!seatMap) return null;
 
-  const rows: Participation[] = await prisma.participation.findMany({ where: { sessionId } });
   const byMemberId = new Map<string, Participation>();
   const memberByName = new Map<string, Participation>();
   const guestByName = new Map<string, Participation>();

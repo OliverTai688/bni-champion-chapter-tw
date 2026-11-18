@@ -3,7 +3,7 @@ import 'server-only';
 import { randomBytes } from 'node:crypto';
 import { Prisma, type Participation, type ParticipationStatus } from '@prisma/client';
 import { prisma } from '@/server/db/prisma';
-import { findLatestSeatMapByWeekId } from '@/server/repositories/seating-workspace-repository';
+import { findLatestSeatsBySessionId } from '@/server/repositories/seating-workspace-repository';
 import { listChapterMembers } from '@/server/tbx/members';
 
 type LegacyOverride = { status?: string; proxyName?: string };
@@ -36,16 +36,19 @@ function isUniqueConflict(error: unknown) {
  * Legacy facts only fill rows that are still untouched, so nothing a leader
  * changed on the new pages is overwritten.
  */
-export async function ensureParticipations(sessionId: string) {
-  const session = await prisma.meetingSession.findUnique({
-    where: { id: sessionId },
-    select: { id: true, weekId: true, metadata: true },
-  });
-  if (!session) return;
+export async function ensureParticipations(sessionId: string): Promise<{ rows: Participation[]; complete: boolean }> {
+  // Independent reads go out together: this runs on every attendance view.
+  const [session, members, existing, seatMap] = await Promise.all([
+    prisma.meetingSession.findUnique({ where: { id: sessionId }, select: { id: true, metadata: true } }),
+    listChapterMembers(),
+    prisma.participation.findMany({ where: { sessionId } }),
+    findLatestSeatsBySessionId(sessionId).catch(() => null),
+  ]);
+  if (!session) return { rows: existing, complete: true };
 
-  const members = await listChapterMembers();
-  const existing = await prisma.participation.findMany({ where: { sessionId } });
   const byKey = new Map(existing.map((row) => [row.key, row]));
+  // False when another request created a row we did not read back.
+  let complete = true;
 
   for (const member of members) {
     const key = memberKey(member.id);
@@ -57,6 +60,7 @@ export async function ensureParticipations(sessionId: string) {
       byKey.set(key, created);
     } catch (error) {
       if (!isUniqueConflict(error)) throw error;
+      complete = false;
     }
   }
 
@@ -85,7 +89,6 @@ export async function ensureParticipations(sessionId: string) {
   }
 
   // 2. Check-ins and guests from the seat map.
-  const seatMap = await findLatestSeatMapByWeekId(session.weekId).catch(() => null);
   if (seatMap) {
     const hostByGuestNumber = new Map<string, string>();
     for (const seat of seatMap.seats) {
@@ -142,6 +145,8 @@ export async function ensureParticipations(sessionId: string) {
       byKey.set(updated.key, updated);
     }
   }
+
+  return { rows: [...byKey.values()], complete };
 }
 
 function legacyStatus(value: string | undefined): ParticipationStatus | null {
@@ -159,15 +164,22 @@ function legacyStatus(value: string | undefined): ParticipationStatus | null {
 async function mirrorToLegacy(row: Participation) {
   if (row.kind !== 'member') return;
   try {
-    const session = await prisma.meetingSession.findUnique({
-      where: { id: row.sessionId },
-      select: { id: true, weekId: true, metadata: true },
-    });
+    // Reads go out together and only changed records are written: this runs on every check-in click.
+    const [session, seatMap] = await Promise.all([
+      prisma.meetingSession.findUnique({
+        where: { id: row.sessionId },
+        select: { id: true, metadata: true },
+      }),
+      row.memberId ? findLatestSeatsBySessionId(row.sessionId).catch(() => null) : null,
+    ]);
     if (!session) return;
+
+    const writes: Array<Promise<unknown>> = [];
 
     const metadata =
       session.metadata && typeof session.metadata === 'object' ? { ...(session.metadata as Record<string, unknown>) } : {};
-    const overrides = { ...readOverrides(session.metadata) } as Record<string, LegacyOverride>;
+    const current = readOverrides(session.metadata);
+    const overrides = { ...current } as Record<string, LegacyOverride>;
 
     if (row.status === 'absent' || row.status === 'medical') {
       overrides[row.displayName] = { status: 'absent' };
@@ -179,13 +191,16 @@ async function mirrorToLegacy(row: Participation) {
       delete overrides[row.displayName];
     }
 
-    await prisma.meetingSession.update({
-      where: { id: session.id },
-      data: { metadata: { ...metadata, attendanceOverrides: overrides } as Prisma.InputJsonValue },
-    });
+    if (JSON.stringify(current[row.displayName] ?? null) !== JSON.stringify(overrides[row.displayName] ?? null)) {
+      writes.push(
+        prisma.meetingSession.update({
+          where: { id: session.id },
+          data: { metadata: { ...metadata, attendanceOverrides: overrides } as Prisma.InputJsonValue },
+        }),
+      );
+    }
 
     if (row.memberId) {
-      const seatMap = await findLatestSeatMapByWeekId(session.weekId).catch(() => null);
       const assignment = seatMap?.seats
         .flatMap((seat) => seat.assignments)
         .find((item) => item.memberId === row.memberId || item.displayName.trim() === row.displayName);
@@ -193,10 +208,12 @@ async function mirrorToLegacy(row: Participation) {
         const checkedIn = row.status === 'present' || row.status === 'late';
         const nextStatus = checkedIn ? 'checked_in' : 'assigned';
         if (assignment.status !== nextStatus && (assignment.status === 'assigned' || assignment.status === 'checked_in')) {
-          await prisma.seatAssignment.update({ where: { id: assignment.id }, data: { status: nextStatus } });
+          writes.push(prisma.seatAssignment.update({ where: { id: assignment.id }, data: { status: nextStatus } }));
         }
       }
     }
+
+    await Promise.all(writes);
   } catch (error) {
     console.error('[tbx] failed to mirror participation to legacy stores', error);
   }
@@ -240,18 +257,23 @@ export async function registerIntent(input: {
 
 /** Marks a member or guest as arrived. `late` records a late arrival. */
 export async function checkIn(input: { participationId: string; method: string; late?: boolean }) {
-  const row = await prisma.participation.findUnique({ where: { id: input.participationId } });
-  if (!row) throw new Error('找不到這筆出席紀錄。');
-  const updated = await prisma.participation.update({
-    where: { id: row.id },
-    data: {
-      status: input.late ? 'late' : 'present',
-      substituteName: null,
-      substituteArrivedAt: null,
-      checkedInAt: new Date(),
-      checkInMethod: input.method,
-    },
-  });
+  const updated = await prisma.participation
+    .update({
+      where: { id: input.participationId },
+      data: {
+        status: input.late ? 'late' : 'present',
+        substituteName: null,
+        substituteArrivedAt: null,
+        checkedInAt: new Date(),
+        checkInMethod: input.method,
+      },
+    })
+    .catch((error: unknown) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new Error('找不到這筆出席紀錄。');
+      }
+      throw error;
+    });
   await mirrorToLegacy(updated);
   return updated;
 }
@@ -438,12 +460,19 @@ export function summarize(rows: Participation[]): AttendanceSummary {
 }
 
 /** Loads the event's attendance after syncing legacy facts. */
+function compareRows(a: Participation, b: Participation) {
+  if (a.kind !== b.kind) return a.kind < b.kind ? -1 : 1;
+  return a.displayName < b.displayName ? -1 : a.displayName > b.displayName ? 1 : 0;
+}
+
 export async function getAttendance(sessionId: string) {
-  await ensureParticipations(sessionId);
-  const rows = await prisma.participation.findMany({
-    where: { sessionId },
-    orderBy: [{ kind: 'asc' }, { displayName: 'asc' }],
-  });
+  const synced = await ensureParticipations(sessionId);
+  const rows = synced.complete
+    ? [...synced.rows].sort(compareRows)
+    : await prisma.participation.findMany({
+        where: { sessionId },
+        orderBy: [{ kind: 'asc' }, { displayName: 'asc' }],
+      });
   return { rows, summary: summarize(rows) };
 }
 

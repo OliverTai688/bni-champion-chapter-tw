@@ -1,7 +1,7 @@
 import { leaderGuard } from '@/components/tbx/leader-guard';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ActionForm, AutoRefresh, ConfirmSubmit } from '@/components/tbx/client';
+import { ActionForm, AutoRefresh, ConfirmSubmit, SubmitButton } from '@/components/tbx/client';
 import { Card, Empty, RoleChips, Stat, StatusChip } from '@/components/tbx/ui';
 import { formatTime } from '@/lib/tbx/labels';
 import { getEventByKey } from '@/server/tbx/events';
@@ -25,9 +25,9 @@ function QuickButton({ eventKey, id, intent, label, gold }: { eventKey: string; 
       <input type="hidden" name="eventKey" value={eventKey} />
       <input type="hidden" name="participationId" value={id} />
       <input type="hidden" name="intent" value={intent} />
-      <button type="submit" className={gold ? 'tb-btn tb-btn-sm tb-btn-gold' : 'tb-btn tb-btn-sm'}>
+      <SubmitButton plain={!gold} className="tb-btn-sm" pendingText={`${label}…`}>
         {label}
-      </button>
+      </SubmitButton>
     </ActionForm>
   );
 }
@@ -40,14 +40,13 @@ export default async function AttendancePage({
   searchParams: Promise<{ filter?: string; q?: string }>;
 }) {
   const { eventKey } = await params;
-  const denied = await leaderGuard();
+  const [denied, event, { filter = 'all', q = '' }] = await Promise.all([leaderGuard(), getEventByKey(eventKey), searchParams]);
   if (denied) return denied;
-  const { filter = 'all', q = '' } = await searchParams;
-  const event = await getEventByKey(eventKey);
   if (!event) notFound();
 
   const [{ rows, summary }, members] = await Promise.all([getAttendance(event.id), listChapterMembers()]);
   const memberOptions = members.map((member) => ({ id: member.id, name: member.displayName }));
+  // After getAttendance: it may create the rows these roles belong to.
   const roles = await getMeetingRoles(event.id);
   const memberName = new Map(members.map((member) => [member.id, member.displayName]));
   const base = `/console/events/${encodeURIComponent(event.weekId)}/attendance`;

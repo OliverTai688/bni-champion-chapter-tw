@@ -1,6 +1,6 @@
 import { leaderGuard } from '@/components/tbx/leader-guard';
 import Link from 'next/link';
-import { ActionForm, ConfirmSubmit } from '@/components/tbx/client';
+import { ActionForm, ConfirmSubmit, SubmitButton } from '@/components/tbx/client';
 import { Empty, PageHeader } from '@/components/tbx/ui';
 import { eventTypeLabel, formatEventDate, taipeiDateKey } from '@/lib/tbx/labels';
 import { prisma } from '@/server/db/prisma';
@@ -95,9 +95,9 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
                           <input type="hidden" name="eventKey" value={event.weekId} />
                           <input type="hidden" name="archive" value={showArchived ? '0' : '1'} />
                           {showArchived ? (
-                            <button type="submit" className="tb-btn tb-btn-sm">
+                            <SubmitButton plain className="tb-btn-sm" pendingText="還原中…">
                               還原
-                            </button>
+                            </SubmitButton>
                           ) : (
                             <ConfirmSubmit confirmText="確定封存">封存</ConfirmSubmit>
                           )}
