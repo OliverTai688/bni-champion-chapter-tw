@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { SessionProvider, signIn, useSession } from 'next-auth/react';
 import {
   DndContext,
   closestCenter,
@@ -413,7 +413,18 @@ function ValidationIssueCard({ issue }: { issue: SeatingValidationIssue }) {
 }
 
 // --- Main Arranger Component ---
-export default function SeatingArranger({
+type SeatingArrangerProps = React.ComponentProps<typeof SeatingArrangerEditor>;
+
+/** The editor is the only screen that reads the Auth.js session on the client, so it carries its own provider. */
+export default function SeatingArranger(props: SeatingArrangerProps) {
+  return (
+    <SessionProvider>
+      <SeatingArrangerEditor {...props} />
+    </SessionProvider>
+  );
+}
+
+function SeatingArrangerEditor({
   initialLayout,
   initialHeroes = [],
   initialMemberRoster,

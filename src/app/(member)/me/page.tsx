@@ -85,7 +85,12 @@ export default async function MemberTodayPage() {
         {plan ? <PlanView data={plan} highlightParticipationId={mine?.id ?? null} showNames={false} /> : null}
         {!plan && grid ? <GridView data={grid} highlightName={me.displayName} showStatus={false} /> : null}
 
-        {today && mine?.status === 'expected' ? <MemberCheckInButton eventKey={event.weekId} /> : null}
+        {today && mine?.status === 'expected' ? (
+          <MemberCheckInButton
+            eventKey={event.weekId}
+            seatMapHref={published ? `/e/${key}?q=${encodeURIComponent(me.displayName)}#seats` : null}
+          />
+        ) : null}
         {!today && mine ? (
           <Link href="/me/events" className="tb-btn tb-btn-lg">
             這場要請假或找代理

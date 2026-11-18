@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { Prisma } from '@prisma/client';
+import { cache } from 'react';
 import type { NormalizedSeatingDraft } from '@/application/seating/save-draft';
 import { prisma } from '@/server/db/prisma';
 
@@ -46,6 +47,32 @@ export async function findLatestSeatMapByWeekId(weekId: string) {
 
   return session?.seatMaps[0] ?? null;
 }
+
+/**
+ * Seats and live assignments of an event's latest seat map, without the session,
+ * revisions or snapshot fields. Read-only pages load this several times per request
+ * (attendance sync, grid view), so it is memoised for the render.
+ */
+export const findLatestSeatsBySessionId = cache(async (sessionId: string) => {
+  return prisma.seatMap.findFirst({
+    where: { sessionId },
+    orderBy: [{ version: 'desc' }, { updatedAt: 'desc' }],
+    select: {
+      id: true,
+      version: true,
+      updatedAt: true,
+      seats: {
+        orderBy: [{ zone: 'asc' }, { position: 'asc' }],
+        include: {
+          assignments: {
+            where: { status: { not: 'released' } },
+            orderBy: { updatedAt: 'desc' },
+          },
+        },
+      },
+    },
+  });
+});
 
 function seatKind(seat: { isGuest: boolean; isHost?: boolean; isSound?: boolean; isDuty?: boolean; role?: string } | null) {
   if (!seat) return 'empty';

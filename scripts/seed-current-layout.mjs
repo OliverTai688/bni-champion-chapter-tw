@@ -44,12 +44,12 @@ function seatKind(seat) {
   return 'member';
 }
 
-const { LAYOUT_1112: LAYOUT_0813, ROSTER_1112: ROSTER_0813 } = loadTsModule('src/lib/layout-1112.ts');
+const { LAYOUT_1119: LAYOUT_0813, ROSTER_1119: ROSTER_0813 } = loadTsModule('src/lib/layout-1119.ts');
 
 const meetingSession = {
-  weekId: '2026-11-12',
-  date: '2026-11-12T00:00:00.000Z',
-  title: '115/11/12 座位表',
+  weekId: '2026-11-19',
+  date: '2026-11-19T00:00:00.000Z',
+  title: '115/11/19 座位表',
   chapterName: 'BNI 長冠軍分會',
   meetingLabel: '每週例會排座',
   source: 'seed',
@@ -195,7 +195,7 @@ async function writeSeed() {
         create: {
           displayName,
           roles: [],
-          metadata: { importedFrom: 'layout-1112' },
+          metadata: { importedFrom: 'layout-1119' },
         },
         update: {
           isActive: true,

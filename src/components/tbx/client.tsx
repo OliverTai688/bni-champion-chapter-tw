@@ -14,15 +14,23 @@ export function SubmitButton({
   className,
   pendingText,
   disabled,
+  plain,
 }: {
   children: ReactNode;
   className?: string;
   pendingText?: string;
   disabled?: boolean;
+  /** Secondary style instead of gold. */
+  plain?: boolean;
 }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className={cn('tb-btn tb-btn-gold', className)} disabled={pending || disabled}>
+    <button
+      type="submit"
+      className={cn('tb-btn', !plain && 'tb-btn-gold', className)}
+      disabled={pending || disabled}
+      aria-busy={pending || undefined}
+    >
       {pending ? pendingText ?? '處理中…' : children}
     </button>
   );
