@@ -92,3 +92,7 @@ Keep filenames lowercase after the prefix and use hyphens.
 - `docs/05_execution-plans/PLN-007_line-official-account-ai-assistant-and-liff-batch-plan.md` - batches LINE-001 to LINE-009.
 - `docs/08_acceptance-and-qa/ACC-006_line-official-account-ai-assistant-and-liff-acceptance.md` - acceptance checklist.
 - `docs/01_product-requirements/PRD-004_a-qi-character-and-persona.md` - 阿麒 A-Qi character, persona, voice and visual rules (v1.0).
+- `docs/01_product-requirements/PRD-005_a-qi-group-understanding-and-meeting-prep-studio.md` - 阿麒 in many LINE groups, group memory, 阿麒工作室, context-aware seat map drafts.
+- `docs/02_architecture-and-rules/ARC-009_a-qi-studio-group-memory-and-meeting-prep-architecture.md` - message archive, digest and meeting-prep jobs, studio data models, draft-only tools.
+- `docs/05_execution-plans/PLN-008_a-qi-studio-group-memory-and-meeting-prep-batch-plan.md` - batches AQ-000 to AQ-006.
+- `docs/08_acceptance-and-qa/ACC-007_a-qi-studio-group-memory-and-meeting-prep-acceptance.md` - acceptance checklist.

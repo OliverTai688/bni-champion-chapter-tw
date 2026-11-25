@@ -31,12 +31,12 @@ Status: In progress（MANUAL_REQUIRED，需要擁有者）
 
 - [x] 確認網站 LINE 登入的現況：正式環境只開 Google 登入，沒有既有的 LINE channel 或綁定（2026-11-18）。
 - [x] 建立 Provider「BNI 長冠軍分會」（2026-11-18）。
-- [x] 建立 LINE Login channel（Channel ID `2012686828`，地區台灣，Web app，2026-11-18），名稱「阿麒」，圖示和說明用 PRD-004 的阿麒。目前狀態是 Developing。
+- [x] 建立 LINE Login channel（Channel ID `2012686828`，地區台灣，Web app，2026-11-18），名稱「阿麒」，圖示和說明用 PRD-004 的阿麒。
 - [x] 設定 Callback URL：`https://bni-champion-chapter-tw.yzedtech.com/api/auth/callback/line`（2026-11-18）。
 - [x] 建立 LIFF app「阿麒」（2026-11-18，原名「長冠軍同行者」）：LIFF ID `2012686828-cJBksfQD`，網址 `https://liff.line.me/2012686828-cJBksfQD`，Size Full，Endpoint 是正式網站根網址，scope 選 `openid`、`profile`，Add friend option 先設 Off（官方帳號建好後改成 On (Normal)）。
 - [x] 開啟 shareTargetPicker（2026-11-18，擁有者同意）：已同意 LY 的「Agreement Regarding Use of Information」。LY 會收集透過分享功能送出的內容和傳送資訊，可能提供給關係企業，也可能用於廣告。
 - [ ] 把 `AUTH_LINE_ID`（Channel ID）和 `AUTH_LINE_SECRET`（Channel secret）設到正式環境。secret 不寫進文件或聊天。
-- [ ] 把 channel 從 Developing 改成 Published。Developing 狀態下只有 channel 管理員能登入。
+- [x] 把 channel 從 Developing 改成 Published（2026-11-19，會員回報綁定時出現 400「developing status」之後）。這個動作不能還原。
 - [x] 建立官方帳號「阿麒」（2026-11-18）：基本 ID `@354afrmf`，輕用量方案，公司名稱「BNI 長冠軍分會」，業種「企業、組織（其他）」，聯絡 email 是團隊信箱。未申請認證帳號。擁有者同意了 LY「同意我們使用您的資訊」。
 - [x] 確認 LINE 官方帳號使用條款更新通知（2025-02-19 版，擁有者自己按的）。
 - [x] 開啟 Messaging API，綁定 Provider「BNI 長冠軍分會」（擁有者按「同意」，2026-11-18）。Messaging API Channel ID `2012687088`。
@@ -105,6 +105,8 @@ Status: 圖文選單已上線（2026-11-19）；分享到群組還沒做
 
 ## LINE-006：Agent 核心與網站 AI 頁
 
+> 2026-11-25：由 PLN-008 的 AQ-002、AQ-003 取代，網站 AI 頁改成 `/console/a-qi`（阿麒工作室）。
+
 Status: Not started
 
 - [ ] `src/server/agent/*`：adapter 介面、先做 PRD-003 Q2 選定的供應商、工具分級、對話迴圈（ARC-008 §7）。
@@ -128,6 +130,8 @@ Status: Not started
 驗收：ACC-006 §6。
 
 ## LINE-008：群組訊息記錄
+
+> 2026-11-25：由 PLN-008 的 AQ-001 取代（全部記錄、不設期限）。
 
 Status: Not started（依 PRD-003 Q3、Q4 的決定）
 
