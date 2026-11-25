@@ -630,15 +630,54 @@ model LineChat {
   kind           String // user | group | room
   lineId         String    @unique // userId / groupId / roomId
   name           String?
-  // Group message archive (PRD-003 R6), off until a leader turns it on.
+  // Recording group messages (PRD-005 R2). Groups 阿麒 joins after AQ-001 start recorded, because the join message says so.
   archiveEnabled Boolean   @default(false)
+  // When this group was told that 阿麒 records it (join message or the one-time announcement, PRD-005 R2.1, R2.5).
+  recordingAnnouncedAt DateTime?
   // Event key of the last check-in hint posted in this group: one hint per event per group.
   checkInHintKey String?
+  // Group profile (PRD-005 R1.2, R1.3): suggested by 阿麒 or set by a leader.
+  purpose          String?
+  category         String? // chapter_main | leadership | new_member | guest | topic | other
+  purposeStatus    String? // suggested | confirmed
+  purposeUpdatedAt DateTime?
+  memberCount      Int?
+  lastMessageAt    DateTime?
+  // Messages up to this time have been read by 阿麒 (AQ-004).
+  digestedUntil    DateTime?
   joinedAt       DateTime  @default(now())
   leftAt         DateTime?
   updatedAt      DateTime  @updatedAt
 
   @@index([kind])
+}
+
+// One message in a recorded group (PRD-005 R2, ARC-009 §3.2). Leaders only; never in a public or member DTO.
+model LineMessage {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  chatId           String    @db.ObjectId
+  lineMessageId    String    @unique
+  lineUserId       String?
+  memberId         String?   @db.ObjectId
+  senderName       String?
+  type             String // text | image | video | audio | file | sticker | location
+  text             String?
+  fileName         String?
+  fileSize         Int?
+  // Attachments: pending | stored | failed | not_stored | too_large. Null for text.
+  attachmentStatus String?
+  assetId          String?   @db.ObjectId
+  mentionsBot      Boolean   @default(false)
+  sentAt           DateTime
+  // No time limit for group messages (PRD-005 R2.3), so this stays null.
+  expiresAt        DateTime?
+  // Set when the sender asked to delete their messages (R2.6): content, sender and file are removed.
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([chatId, sentAt])
+  @@index([lineUserId])
+  @@index([expiresAt])
 }
 
 // Webhook events already handled, so a redelivered event is not processed twice.

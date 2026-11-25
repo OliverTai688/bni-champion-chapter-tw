@@ -4,6 +4,8 @@ import { isMessagingConfigured, verifyLineSignature } from '@/server/line/messag
 // Webhook of the LINE official account 阿麒 (PLN-007 LINE-004, ARC-008 §5).
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+// Files sent to recorded groups are downloaded and stored in R2 after the response (PRD-005 R2.2).
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   if (!isMessagingConfigured()) {

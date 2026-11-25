@@ -8,11 +8,18 @@ import { prisma } from '@/server/db/prisma';
 import { checkInMemberForToday, describeCheckIn, getMemberSeat } from '@/server/tbx/check-in-service';
 import { getFocusEvent, isEventToday } from '@/server/tbx/events';
 import { logOperation } from '@/server/tbx/log';
-import { replyMessage, text, type LineTextMessage } from '@/server/line/messaging';
+import {
+  RECORDING_NOTICE,
+  deleteMessagesOfUser,
+  recordGroupMessage,
+  refreshChatSummaryLater,
+} from '@/server/line/archive';
+import { replyMessage, text, textWithButtons, type LineTextMessage } from '@/server/line/messaging';
 
 /**
  * What 阿麒 does with each webhook event (PRD-003 R3, R4; ARC-008 §5.2).
  * 1:1 chats get quick commands; groups stay quiet unless 阿麒 is mentioned.
+ * Recorded groups have every message saved for 阿麒工作室 (PRD-005 R2).
  * Who is talking comes only from LINE's userId and MemberIdentity, never from message text.
  */
 
@@ -25,12 +32,20 @@ export interface LineEvent {
   type: string;
   webhookEventId?: string;
   replyToken?: string;
+  timestamp?: number;
   source?: Source;
   message?: {
+    id?: string;
     type: string;
     text?: string;
+    fileName?: string;
+    fileSize?: number;
+    title?: string;
+    address?: string;
+    contentProvider?: { type?: string };
     mention?: { mentionees?: Array<{ isSelf?: boolean }> };
   };
+  postback?: { data?: string };
 }
 
 /** Links open inside LINE through LIFF, so the member is signed in automatically. */
@@ -48,7 +63,10 @@ const COMMANDS = {
   lottery: ['抽獎', '抽禮物'],
   vote: ['投票', '長冠軍之星'],
   help: ['說明', 'help', '幫助', '選單'],
+  deleteMine: ['刪除我的群組訊息', '刪除我的訊息', '刪除群組訊息'],
 };
+
+const DELETE_MINE_POSTBACK = 'a-qi:delete-my-group-messages';
 
 function matches(value: string, words: string[]) {
   return words.includes(normalize(value));
@@ -60,6 +78,7 @@ function helpText(origin: string) {
     '・打「簽到」：例會當天幫你簽到',
     '・打「座位」：看今天的座位表和你的位子',
     '・打「抽獎」、「投票」：打開今天的活動頁',
+    '・打「刪除我的群組訊息」：刪掉我在群組記錄的你的訊息',
     '',
     `今天的活動頁：${lineLink(origin, '/today')}`,
   ].join('\n');
@@ -81,12 +100,37 @@ async function firstDelivery(webhookEventId: string | undefined) {
   }
 }
 
-async function upsertChat(kind: 'user' | 'group' | 'room', lineId: string, data: { leftAt?: Date | null } = {}) {
+type ChatUpdate = { leftAt?: Date | null; archiveEnabled?: boolean; recordingAnnouncedAt?: Date };
+
+async function upsertChat(kind: 'user' | 'group' | 'room', lineId: string, data: ChatUpdate = {}) {
   return prisma.lineChat.upsert({
     where: { lineId },
-    create: { kind, lineId, name: null, checkInHintKey: null, leftAt: null },
+    // Optional fields are written as null so `field: null` filters find them (MongoDB rule in AGENTS.md).
+    create: {
+      kind,
+      lineId,
+      name: null,
+      archiveEnabled: data.archiveEnabled ?? false,
+      recordingAnnouncedAt: data.recordingAnnouncedAt ?? null,
+      checkInHintKey: null,
+      purpose: null,
+      category: null,
+      purposeStatus: null,
+      purposeUpdatedAt: null,
+      memberCount: null,
+      lastMessageAt: null,
+      digestedUntil: null,
+      leftAt: null,
+    },
     update: data,
   });
+}
+
+/** Text the group sees in the message, for the record. Stickers have none. */
+function messageText(message: NonNullable<LineEvent['message']>) {
+  if (message.type === 'text') return message.text ?? null;
+  if (message.type === 'location') return [message.title, message.address].filter(Boolean).join(' ') || null;
+  return null;
 }
 
 async function reply(event: LineEvent, messages: LineTextMessage[]) {
@@ -112,6 +156,18 @@ async function handleUserText(event: LineEvent, userId: string, value: string, o
     return reply(event, [text(`${mine}座位表：${lineLink(origin, '/today')}`)]);
   }
 
+  if (matches(value, COMMANDS.deleteMine)) {
+    const count = await prisma.lineMessage.count({
+      where: { lineUserId: userId, OR: [{ deletedAt: null }, { deletedAt: { isSet: false } }] },
+    });
+    if (count === 0) return reply(event, [text('我在群組裡沒有記錄到你的訊息。')]);
+    return reply(event, [
+      textWithButtons(`我在群組裡記錄了你的 ${count} 則訊息（包含照片和檔案）。刪除後無法復原，要刪除嗎？`, [
+        { label: '確認刪除', data: DELETE_MINE_POSTBACK },
+      ]),
+    ]);
+  }
+
   if (matches(value, COMMANDS.lottery)) return reply(event, [text(`抽獎頁：${lineLink(origin, '/today/lottery')}`)]);
   if (matches(value, COMMANDS.vote)) return reply(event, [text(`投票頁：${lineLink(origin, '/today/vote')}`)]);
 
@@ -119,13 +175,29 @@ async function handleUserText(event: LineEvent, userId: string, value: string, o
   return reply(event, [text(helpText(origin))]);
 }
 
-async function handleGroupText(event: LineEvent, chatLineId: string, kind: 'group' | 'room', value: string, origin: string) {
-  const mentioned = Boolean(event.message?.mention?.mentionees?.some((item) => item.isSelf));
+async function handleDeleteMine(event: LineEvent, userId: string) {
+  const count = await deleteMessagesOfUser(userId);
+  // The log keeps only the count: no text, no LINE userId.
+  await logOperation({
+    actorRole: 'system',
+    actorName: '阿麒',
+    action: 'line_messages_deleted_by_sender',
+    targetType: 'LineMessage',
+    metadata: { count },
+  });
+  return reply(event, [text(count > 0 ? `已刪除你在群組的 ${count} 則訊息和檔案。` : '我在群組裡沒有記錄到你的訊息。')]);
+}
 
+async function handleGroupText(
+  event: LineEvent,
+  chat: Awaited<ReturnType<typeof upsertChat>>,
+  value: string,
+  mentioned: boolean,
+  origin: string,
+) {
   if (matches(value, COMMANDS.checkIn)) {
     const today = await getFocusEvent({ publicOnly: true });
     if (!today || !isEventToday(today)) return;
-    const chat = await upsertChat(kind, chatLineId);
     if (chat.checkInHintKey === today.weekId) return;
     await prisma.lineChat.update({ where: { id: chat.id }, data: { checkInHintKey: today.weekId } });
     return reply(event, [text(`請點這裡簽到 👉 ${lineLink(origin, '/today/check-in')}\n也可以私訊阿麒打「簽到」。`)]);
@@ -154,6 +226,10 @@ export async function handleLineEvent(event: LineEvent, origin: string) {
       await upsertChat('user', source.userId, { leftAt: new Date() });
       return;
     }
+    if (event.type === 'postback') {
+      if (event.postback?.data === DELETE_MINE_POSTBACK) return handleDeleteMine(event, source.userId);
+      return;
+    }
     if (event.type === 'message') {
       if (event.message?.type !== 'text' || !event.message.text) {
         return reply(event, [text('我目前只看得懂文字訊息。打「說明」可以看我能做什麼。')]);
@@ -167,20 +243,51 @@ export async function handleLineEvent(event: LineEvent, origin: string) {
   const chatLineId = source.type === 'group' ? source.groupId : source.roomId;
 
   if (event.type === 'join') {
-    await upsertChat(kind, chatLineId, { leftAt: null });
-    await logOperation({ actorRole: 'system', actorName: '阿麒', action: 'line_bot_joined', targetType: 'LineChat', metadata: { kind } });
+    // The join message tells the group about recording, so recording starts now (PRD-005 R2.1).
+    const chat = await upsertChat(kind, chatLineId, { leftAt: null, archiveEnabled: true, recordingAnnouncedAt: new Date() });
+    refreshChatSummaryLater(chat);
+    await logOperation({ actorRole: 'system', actorName: '阿麒', action: 'line_bot_joined', targetType: 'LineChat', targetId: chat.id, metadata: { kind } });
     return reply(event, [
       text(
-        `大家好，我是阿麒，長冠軍商會的 AI 同行夥伴。\n我會安靜待在群組裡，不會刷訊息；需要我的時候請 @阿麒。\n簽到、查自己的座位，請私訊我，或點這裡：${lineLink(origin, '/today')}`,
+        [
+          '大家好，我是阿麒，長冠軍商會的 AI 同行夥伴。',
+          '我會安靜待在群組裡，不會刷訊息；需要我的時候請 @阿麒。',
+          '',
+          RECORDING_NOTICE,
+          '',
+          `簽到、查自己的座位，請私訊我，或點這裡：${lineLink(origin, '/today')}`,
+        ].join('\n'),
       ),
     ]);
   }
   if (event.type === 'leave') {
-    await upsertChat(kind, chatLineId, { leftAt: new Date() });
-    await logOperation({ actorRole: 'system', actorName: '阿麒', action: 'line_bot_left', targetType: 'LineChat', metadata: { kind } });
+    const chat = await upsertChat(kind, chatLineId, { leftAt: new Date() });
+    await logOperation({ actorRole: 'system', actorName: '阿麒', action: 'line_bot_left', targetType: 'LineChat', targetId: chat.id, metadata: { kind } });
     return;
   }
-  if (event.type === 'message' && event.message?.type === 'text' && event.message.text) {
-    return handleGroupText(event, chatLineId, kind, event.message.text, origin);
+  if (event.type === 'memberJoined' || event.type === 'memberLeft') {
+    refreshChatSummaryLater(await upsertChat(kind, chatLineId));
+    return;
+  }
+  if (event.type !== 'message' || !event.message) return;
+
+  const message = event.message;
+  const mentioned = Boolean(message.mention?.mentionees?.some((item) => item.isSelf));
+  const chat = await upsertChat(kind, chatLineId);
+  if (chat.archiveEnabled && !chat.leftAt && message.id) {
+    await recordGroupMessage(chat, {
+      lineMessageId: message.id,
+      type: message.type,
+      text: messageText(message),
+      fileName: message.fileName ?? null,
+      fileSize: typeof message.fileSize === 'number' ? message.fileSize : null,
+      externalContent: message.contentProvider?.type === 'external',
+      lineUserId: source.userId ?? null,
+      mentionsBot: mentioned,
+      sentAt: event.timestamp ? new Date(event.timestamp) : new Date(),
+    });
+  }
+  if (message.type === 'text' && message.text) {
+    return handleGroupText(event, chat, message.text, mentioned, origin);
   }
 }

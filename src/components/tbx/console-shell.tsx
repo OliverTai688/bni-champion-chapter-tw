@@ -3,6 +3,7 @@
 import { signIn } from 'next-auth/react';
 import { useState, type FormEvent } from 'react';
 import {
+  Bot,
   CalendarDays,
   Gift,
   House,
@@ -22,6 +23,7 @@ const ITEMS: Array<{ href: string; label: string; icon: typeof House; exact?: bo
   { href: '/console/scorecard', label: '綠燈', icon: Gauge },
   { href: '/console/gifts', label: '禮物', icon: Gift },
   { href: '/console/members', label: '會員', icon: Users },
+  { href: '/console/a-qi/groups', label: '阿麒', icon: Bot, match: '/console/a-qi' },
   { href: '/console/ai', label: 'AI', icon: Sparkles },
   { href: '/console/settings/roles', label: '設定', icon: Settings, match: '/console/settings' },
 ];

@@ -45,15 +45,16 @@ Status: In progress
 
 ## AQ-001：群組名冊與訊息記錄
 
-Status: Not started
+Status: Implemented locally（2026-11-25，branch `feat/a-qi-group-archive`）；未部署。報告：`docs/2_agent-input/generated/agent-loop/reports/a-qi-aq001-group-archive-20261125.md`
 
-- [ ] Prisma：`LineChat` 新增群組檔案欄位、新增 `LineMessage`（ARC-009 §3.1、§3.2）。
-- [ ] webhook：記錄中的群組，文字訊息寫入 `LineMessage`；附件在 `after()` 下載，存到 R2，建立 `Asset`。
-- [ ] 加入群組時：用 Messaging API 取得群組名稱和人數，記錄預設打開，自我介紹改成 PRD-005 R2.1 的版本。
-- [ ] 舊群組第一次打開記錄時，發一次公告（R2.5）。
-- [ ] 一對一指令「刪除我的群組訊息」：先確認，再刪除這位使用者的訊息和 R2 檔案（R2.6）。
-- [ ] `/console/a-qi/groups`：群組清單、記錄開關、訊息瀏覽與搜尋、附件用 presigned URL 檢視、刪除整個群組的記錄（要二次確認）。
-- [ ] 正式資料庫只建立這一批新增的索引。
+- [x] Prisma：`LineChat` 新增群組檔案欄位、新增 `LineMessage`（ARC-009 §3.1、§3.2）。
+- [x] webhook：記錄中的群組，每一則訊息都寫入 `LineMessage`；附件在 `after()` 下載，存到 R2，建立 `Asset`。
+- [x] 加入群組時：用 Messaging API 取得群組名稱和人數，記錄預設打開，自我介紹改成 PRD-005 R2.1 的版本。
+- [x] 舊群組第一次打開記錄時，發一次公告（R2.5）。
+- [x] 一對一指令「刪除我的群組訊息」：先確認，再刪除這位使用者的訊息和 R2 檔案（R2.6）。
+- [x] `/console/a-qi/groups`：群組清單、群組檔案、記錄開關、訊息瀏覽與搜尋、附件用 presigned URL 檢視、刪除整個群組的記錄（要二次確認）。
+- [ ] 正式資料庫只建立 `LineMessage` 的索引（需要擁有者同意）。
+- [ ] 確認 Vercel 有 `R2_*` 環境變數，合併部署，在測試群組驗收。
 
 驗收：ACC-007 §1。
 
