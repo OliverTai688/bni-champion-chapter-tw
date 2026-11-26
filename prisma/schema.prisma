@@ -110,12 +110,12 @@ model MeetingSession {
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
-  seatMaps      SeatMap[]
-  operationLogs OperationLog[]
-  livePolls     LivePoll[]
+  seatMaps       SeatMap[]
+  operationLogs  OperationLog[]
+  livePolls      LivePoll[]
   participations Participation[]
-  gifts         Gift[]
-  seatPlan      EventSeatPlan?
+  gifts          Gift[]
+  seatPlan       EventSeatPlan?
 
   @@index([date])
   @@index([status])
@@ -123,52 +123,52 @@ model MeetingSession {
 }
 
 model Member {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  displayName String   @unique
-  adminGroup  String?
-  roles       String[]
-  note        String?
-  isActive    Boolean  @default(true)
-  industry    String?
-  company     String?
-  phone       String?
-  email       String?
-  intro       String?
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  displayName     String    @unique
+  adminGroup      String?
+  roles           String[]
+  note            String?
+  isActive        Boolean   @default(true)
+  industry        String?
+  company         String?
+  phone           String?
+  email           String?
+  intro           String?
   targetCustomers String?
-  aliases     String[]
+  aliases         String[]
   // 'member' = chapter member. Null = name created from a seat map (guest, proxy, unknown).
-  category    String?
-  joinedAt    DateTime?
+  category        String?
+  joinedAt        DateTime?
   // Set while a new member is being mentored. Shown as 新會員 / 導師 on seat plans.
-  mentorId    String?  @db.ObjectId
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  mentorId        String?   @db.ObjectId
+  metadata        Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  assignments SeatAssignment[]
-  pollOptions  LivePollOption[]
+  assignments    SeatAssignment[]
+  pollOptions    LivePollOption[]
   participations Participation[]
-  roleTerms    RoleTerm[]
-  palmsRows    PalmsMemberRow[]
+  roleTerms      RoleTerm[]
+  palmsRows      PalmsMemberRow[]
 
   @@index([isActive])
 }
 
 model SeatMap {
-  id             String        @id @default(auto()) @map("_id") @db.ObjectId
-  sessionId      String        @db.ObjectId
+  id             String         @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId      String         @db.ObjectId
   session        MeetingSession @relation(fields: [sessionId], references: [id])
   title          String
-  version        Int           @default(1)
-  status         SeatMapStatus @default(draft)
-  layoutKind     String        @default("bni-weekly-grid")
+  version        Int            @default(1)
+  status         SeatMapStatus  @default(draft)
+  layoutKind     String         @default("bni-weekly-grid")
   topRoles       Json
   memberRoster   String[]
   heroes         String[]
   industryChains Json?
-  source         String        @default("seed")
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  source         String         @default("seed")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
   seats       Seat[]
   assignments SeatAssignment[]
@@ -263,17 +263,17 @@ model SeatMapRevision {
 }
 
 model OperationLog {
-  id          String             @id @default(auto()) @map("_id") @db.ObjectId
-  sessionId   String?            @db.ObjectId
-  session     MeetingSession?    @relation(fields: [sessionId], references: [id])
-  actorRole   OperationActorRole @default(system)
-  actorName   String?
-  action      String
-  targetType  String
-  targetId    String?
-  reason      String?
-  metadata    Json?
-  createdAt   DateTime           @default(now())
+  id         String             @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId  String?            @db.ObjectId
+  session    MeetingSession?    @relation(fields: [sessionId], references: [id])
+  actorRole  OperationActorRole @default(system)
+  actorName  String?
+  action     String
+  targetType String
+  targetId   String?
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime           @default(now())
 
   @@index([sessionId])
   @@index([action])
@@ -307,18 +307,18 @@ model LivePoll {
 }
 
 model LivePollOption {
-  id                String         @id @default(auto()) @map("_id") @db.ObjectId
-  pollId            String         @db.ObjectId
-  poll              LivePoll       @relation(fields: [pollId], references: [id])
-  memberId          String?        @db.ObjectId
-  member            Member?        @relation(fields: [memberId], references: [id])
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  pollId            String   @db.ObjectId
+  poll              LivePoll @relation(fields: [pollId], references: [id])
+  memberId          String?  @db.ObjectId
+  member            Member?  @relation(fields: [memberId], references: [id])
   label             String
   publicDescription String?
   position          Int
-  isActive          Boolean        @default(true)
+  isActive          Boolean  @default(true)
   metadata          Json?
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   votes LivePollVote[]
 
@@ -385,30 +385,30 @@ enum ParticipationStatus {
 // `key` is "m:<memberId>" for members and "g:<random>" for guests so the
 // compound unique index never has to hold a null.
 model Participation {
-  id               String              @id @default(auto()) @map("_id") @db.ObjectId
-  sessionId        String              @db.ObjectId
-  session          MeetingSession      @relation(fields: [sessionId], references: [id])
-  key              String
-  kind             ParticipationKind   @default(member)
-  memberId         String?             @db.ObjectId
-  member           Member?             @relation(fields: [memberId], references: [id])
-  displayName      String
-  status           ParticipationStatus @default(expected)
-  substituteName   String?
+  id                  String              @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId           String              @db.ObjectId
+  session             MeetingSession      @relation(fields: [sessionId], references: [id])
+  key                 String
+  kind                ParticipationKind   @default(member)
+  memberId            String?             @db.ObjectId
+  member              Member?             @relation(fields: [memberId], references: [id])
+  displayName         String
+  status              ParticipationStatus @default(expected)
+  substituteName      String?
   substituteArrivedAt DateTime?
-  intentSource     String?
-  intentAt         DateTime?
-  checkedInAt      DateTime?
-  checkInMethod    String?
-  guestIndustry    String?
-  guestCompany     String?
-  hostMemberId     String?             @db.ObjectId
-  invitedByMemberId String?            @db.ObjectId
+  intentSource        String?
+  intentAt            DateTime?
+  checkedInAt         DateTime?
+  checkInMethod       String?
+  guestIndustry       String?
+  guestCompany        String?
+  hostMemberId        String?             @db.ObjectId
+  invitedByMemberId   String?             @db.ObjectId
   // Duties for this one event, e.g. ["duty", "sound"]. Keys live in src/lib/tbx/roles.ts.
-  roles            String[]
-  note             String?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  roles               String[]
+  note                String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@unique([sessionId, key])
   @@index([sessionId, status])
@@ -469,20 +469,20 @@ model GiftAward {
 }
 
 model PalmsPeriod {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  from        DateTime
-  to          DateTime
-  chapterName String?
-  exportedAt  DateTime?
-  exportedBy  String?
-  isPartial   Boolean  @default(false)
-  version     Int      @default(1)
-  isCurrent   Boolean  @default(true)
-  meetingCount Int     @default(0)
-  fileName    String?
-  totals      Json?
-  importedBy  String?
-  createdAt   DateTime @default(now())
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  from         DateTime
+  to           DateTime
+  chapterName  String?
+  exportedAt   DateTime?
+  exportedBy   String?
+  isPartial    Boolean   @default(false)
+  version      Int       @default(1)
+  isCurrent    Boolean   @default(true)
+  meetingCount Int       @default(0)
+  fileName     String?
+  totals       Json?
+  importedBy   String?
+  createdAt    DateTime  @default(now())
 
   rows PalmsMemberRow[]
 
@@ -626,28 +626,28 @@ model MemberIdentity {
 
 // A chat the official account takes part in: a 1:1 friend, a group or a multi-person room.
 model LineChat {
-  id             String    @id @default(auto()) @map("_id") @db.ObjectId
-  kind           String // user | group | room
-  lineId         String    @unique // userId / groupId / roomId
-  name           String?
+  id                   String    @id @default(auto()) @map("_id") @db.ObjectId
+  kind                 String // user | group | room
+  lineId               String    @unique // userId / groupId / roomId
+  name                 String?
   // Recording group messages (PRD-005 R2). Groups 阿麒 joins after AQ-001 start recorded, because the join message says so.
-  archiveEnabled Boolean   @default(false)
+  archiveEnabled       Boolean   @default(false)
   // When this group was told that 阿麒 records it (join message or the one-time announcement, PRD-005 R2.1, R2.5).
   recordingAnnouncedAt DateTime?
   // Event key of the last check-in hint posted in this group: one hint per event per group.
-  checkInHintKey String?
+  checkInHintKey       String?
   // Group profile (PRD-005 R1.2, R1.3): suggested by 阿麒 or set by a leader.
-  purpose          String?
-  category         String? // chapter_main | leadership | new_member | guest | topic | other
-  purposeStatus    String? // suggested | confirmed
-  purposeUpdatedAt DateTime?
-  memberCount      Int?
-  lastMessageAt    DateTime?
+  purpose              String?
+  category             String? // chapter_main | leadership | new_member | guest | topic | other
+  purposeStatus        String? // suggested | confirmed
+  purposeUpdatedAt     DateTime?
+  memberCount          Int?
+  lastMessageAt        DateTime?
   // Messages up to this time have been read by 阿麒 (AQ-004).
-  digestedUntil    DateTime?
-  joinedAt       DateTime  @default(now())
-  leftAt         DateTime?
-  updatedAt      DateTime  @updatedAt
+  digestedUntil        DateTime?
+  joinedAt             DateTime  @default(now())
+  leftAt               DateTime?
+  updatedAt            DateTime  @updatedAt
 
   @@index([kind])
 }
@@ -687,4 +687,26 @@ model LineWebhookReceipt {
   receivedAt     DateTime @default(now())
 
   @@index([receivedAt])
+}
+
+// One piece of 阿麒's work: a model call loop for one job (PRD-005 R7.3, ARC-009 §3.3).
+model AgentRun {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  job              String // digest | meeting_prep | studio_reply | line_reply | check
+  trigger          String // cron | leader | webhook
+  provider         String
+  model            String
+  rounds           Int       @default(0)
+  inputTokens      Int       @default(0)
+  outputTokens     Int       @default(0)
+  cacheReadTokens  Int       @default(0)
+  cacheWriteTokens Int       @default(0)
+  status           String // running | ok | failed | skipped_budget | not_configured
+  stopReason       String?
+  error            String?
+  startedAt        DateTime  @default(now())
+  finishedAt       DateTime?
+
+  @@index([job, startedAt])
+  @@index([startedAt])
 }

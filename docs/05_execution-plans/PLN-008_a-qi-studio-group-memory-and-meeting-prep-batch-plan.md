@@ -45,7 +45,7 @@ Status: In progress
 
 ## AQ-001：群組名冊與訊息記錄
 
-Status: Implemented locally（2026-11-25，branch `feat/a-qi-group-archive`）；未部署。報告：`docs/2_agent-input/generated/agent-loop/reports/a-qi-aq001-group-archive-20261125.md`
+Status: Deployed（2026-11-26，`main` e6aa198）；待測試群組驗收。報告：`docs/2_agent-input/generated/agent-loop/reports/a-qi-aq001-group-archive-20261125.md`
 
 - [x] Prisma：`LineChat` 新增群組檔案欄位、新增 `LineMessage`（ARC-009 §3.1、§3.2）。
 - [x] webhook：記錄中的群組，每一則訊息都寫入 `LineMessage`；附件在 `after()` 下載，存到 R2，建立 `Asset`。
@@ -53,20 +53,24 @@ Status: Implemented locally（2026-11-25，branch `feat/a-qi-group-archive`）�
 - [x] 舊群組第一次打開記錄時，發一次公告（R2.5）。
 - [x] 一對一指令「刪除我的群組訊息」：先確認，再刪除這位使用者的訊息和 R2 檔案（R2.6）。
 - [x] `/console/a-qi/groups`：群組清單、群組檔案、記錄開關、訊息瀏覽與搜尋、附件用 presigned URL 檢視、刪除整個群組的記錄（要二次確認）。
-- [ ] 正式資料庫只建立 `LineMessage` 的索引（需要擁有者同意）。
-- [ ] 確認 Vercel 有 `R2_*` 環境變數，合併部署，在測試群組驗收。
+- [x] 正式資料庫只建立 `LineMessage` 的索引（2026-11-26，擁有者同意）。
+- [x] 確認 Vercel 有 `R2_*` 環境變數（Production、Preview），合併部署。
+- [ ] 在測試群組驗收（MANUAL_REQUIRED）。
 
 驗收：ACC-007 §1。
 
 ## AQ-002：Agent 核心（Claude）
 
-Status: Not started
+Status: Implemented locally（2026-11-26，branch `feat/a-qi-agent-core`）；未部署。報告：`docs/2_agent-input/generated/agent-loop/reports/a-qi-aq002-agent-core-20261126.md`
 
-- [ ] `src/server/agent/*`（ARC-008 §7）。先做 Anthropic adapter，使用結構化輸出和工具呼叫。
-- [ ] 模型、預算、cron 的環境變數（ARC-009 §8）。設定金鑰由擁有者自己做。
-- [ ] `AgentRun`：每次呼叫都記錄 token 用量。每日預算檢查。
-- [ ] 沒有金鑰時，回傳「AI 未設定」，不影響記錄和快速指令。
-- [ ] 固定內容使用 prompt caching。
+- [x] `src/server/agent/*`（ARC-008 §7）。先做 Anthropic adapter，使用結構化輸出和工具呼叫。
+- [x] 模型、預算的環境變數（ARC-009 §8）。設定金鑰由擁有者自己做。`CRON_SECRET` 到 AQ-004 才用到。
+- [x] `AgentRun`：每次工作都記錄 token 用量。每日預算檢查。
+- [x] 沒有金鑰時，回傳「AI 未設定」，不影響記錄和快速指令。
+- [x] 固定內容使用 prompt caching。
+- [x] `/console/a-qi`：AI 狀態、今日用量、連線測試、最近的工作。
+- [ ] 超過預算的通知目前寫在操作紀錄，AQ-003 改成在交流區發文。
+- [ ] 正式資料庫只建立 `AgentRun` 的索引、擁有者設定 `ANTHROPIC_API_KEY`、部署後按連線測試（MANUAL_REQUIRED）。
 
 驗收：ACC-007 §2。
 
